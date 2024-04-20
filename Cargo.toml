@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 freya = { git = "https://github.com/marc2332/freya.git" }
 dioxus = { version = "0.4", features = ["macro", "hooks"], default-features = false }
+portable-pty = "0.8.1"
+anyhow = "*"

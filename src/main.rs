@@ -1,4 +1,9 @@
+mod components;
+mod hooks;
+
 use freya::prelude::*;
+use components::{Sidebar, ContentArea};
+use hooks::use_terminal::use_terminal;
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMono-Regular.ttf");
 
@@ -16,12 +21,8 @@ fn main() {
 #[component]
 #[allow(non_snake_case)]
 fn App() -> Element {
-    let content = vec![
-        "-> raven git:(master) cargo run".to_string(),
-        "   Compiling raven v0.1.0 (/some/path/raven)".to_string(),
-        "    Finished dev [unoptimized + debuginfo] target(s) in 0.93s".to_string(),
-        "     Running `target/debug/raven`".to_string()
-    ];
+    let terminal = use_terminal();
+
     rsx!(
         rect {
             width: "100%",
@@ -31,37 +32,8 @@ fn App() -> Element {
             direction: "horizontal",
             font_size: "14",
             Sidebar {}
-            Content {
-                lines: content
-            }
-        }
-    )
-}
-
-#[component]
-#[allow(non_snake_case)]
-fn Sidebar() -> Element {
-    rsx!(
-        rect {
-            padding: "50 50 20 30",
-            label {
-                "Workspace"
-            }
-        }
-    )
-}
-
-#[component]
-#[allow(non_snake_case)]
-fn Content(lines: Vec<String>) -> Element {
-    rsx!(
-        rect {
-            padding: "50 50 20 100",
-            for line in lines {
-                rect {
-                    padding: "2 0", 
-                    label { "{line}" }
-                }
+            ContentArea {
+                active_session: terminal.active_session()
             }
         }
     )
