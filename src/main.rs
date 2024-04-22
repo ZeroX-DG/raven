@@ -33,7 +33,7 @@ fn App() -> Element {
             font_size: "14",
             Sidebar {}
             ContentArea {
-                active_session: terminal.active_session()
+                lines: terminal.active_session_lines()
             }
         }
     )
