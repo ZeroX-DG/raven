@@ -1,21 +1,25 @@
 mod components;
+mod core;
 mod hooks;
 
+use components::{ContentArea, Sidebar};
 use freya::prelude::*;
-use components::{Sidebar, ContentArea};
 use hooks::use_terminal::use_terminal;
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMono-Regular.ttf");
 
 fn main() {
-    launch_cfg(App, LaunchConfig::<()>::builder()
-        .with_decorations(false)
-        .with_width(900.)
-        .with_height(600.)
-        .with_transparency(true)
-        .with_font("jetbrains mono", JETBRAINS_MONO)
-        .with_default_font("jetbrains mono")
-        .build());
+    launch_cfg(
+        App,
+        LaunchConfig::<()>::builder()
+            .with_decorations(false)
+            .with_width(900.)
+            .with_height(600.)
+            .with_transparency(true)
+            .with_font("jetbrains mono", JETBRAINS_MONO)
+            .with_default_font("jetbrains mono")
+            .build(),
+    );
 }
 
 #[component]
