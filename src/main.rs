@@ -27,7 +27,7 @@ fn main() {
 #[allow(non_snake_case)]
 fn App() -> Element {
     let state = use_signal(|| {
-        let state = AppState::new();
+        let mut state = AppState::new();
         let pane = state.new_pane();
         state.set_active_pane(pane.id);
         state
