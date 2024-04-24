@@ -7,7 +7,7 @@ use components::{ContentArea, Sidebar};
 use freya::prelude::*;
 use state::AppState;
 
-const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMono-Regular.ttf");
+const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
 
 fn main() {
     launch_cfg(
