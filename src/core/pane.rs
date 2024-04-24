@@ -25,6 +25,7 @@ pub struct Pane {
     pub id: PaneId,
     terminal: Mutex<Terminal>,
     pty: Mutex<Box<dyn MasterPty + Send>>,
+    title: String,
 }
 
 impl Pane {
@@ -51,7 +52,12 @@ impl Pane {
             id,
             terminal: Mutex::new(terminal),
             pty: Mutex::new(pty.master),
+            title: format!("Terminal #{}", id)
         })
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
     }
 
     pub fn reader(&self) -> anyhow::Result<Box<dyn Read + Send>> {

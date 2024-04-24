@@ -2,6 +2,7 @@ mod components;
 mod core;
 mod state;
 mod events;
+mod icons;
 
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
@@ -42,7 +43,9 @@ fn App() -> Element {
             color: "rgb(86, 91, 120)",
             direction: "horizontal",
             font_size: "14",
-            Sidebar {}
+            Sidebar {
+                panes: state.read().panes()
+            }
 
             if let Some(pane) = active_pane() {
                 ContentArea {

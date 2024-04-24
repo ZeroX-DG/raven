@@ -26,6 +26,10 @@ impl AppState {
     pub fn set_active_pane(&mut self, pane_id: PaneId) {
         self.active_pane_id.replace(pane_id);
     }
+
+    pub fn panes(&self) -> Vec<Arc<Pane>> {
+        self.panes.clone()
+    }
     
     pub fn new_pane(&mut self) -> Arc<Pane> {
         let pane_id = alloc_pane_id();
