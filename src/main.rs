@@ -1,10 +1,11 @@
 mod components;
 mod core;
-mod hooks;
+mod state;
+mod events;
 
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
-use hooks::use_terminal::use_terminal;
+use state::AppState;
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMono-Regular.ttf");
 
@@ -25,7 +26,13 @@ fn main() {
 #[component]
 #[allow(non_snake_case)]
 fn App() -> Element {
-    let terminal = use_terminal();
+    let state = use_signal(|| {
+        let state = AppState::new();
+        let pane = state.new_pane();
+        state.set_active_pane(pane.id);
+        state
+    });
+    let active_pane = use_memo(move || state.read().active_pane());
 
     rsx!(
         rect {
@@ -36,8 +43,11 @@ fn App() -> Element {
             direction: "horizontal",
             font_size: "14",
             Sidebar {}
-            ContentArea {
-                lines: terminal.active_session_lines()
+
+            if let Some(pane) = active_pane() {
+                ContentArea {
+                    pane: pane
+                }
             }
         }
     )

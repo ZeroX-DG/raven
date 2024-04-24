@@ -1,6 +1,6 @@
 use std::{
     io::Read,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -12,11 +12,17 @@ use termwiz::escape::{
 };
 use wezterm_term::{color::ColorPalette, Terminal, TerminalConfiguration, TerminalSize};
 
+use crate::events::{Event, Events};
+
 pub type PaneId = usize;
 static PANE_ID: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
 
+pub fn alloc_pane_id() -> PaneId {
+    PANE_ID.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed)
+}
+
 pub struct Pane {
-    id: PaneId,
+    pub id: PaneId,
     terminal: Mutex<Terminal>,
     pty: Mutex<Box<dyn MasterPty + Send>>,
 }
@@ -68,6 +74,12 @@ impl Pane {
     }
 }
 
+impl PartialEq for Pane {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Debug)]
 struct TermConfig {
     scrollback: usize,
@@ -96,7 +108,7 @@ fn perform_actions(pane: &Arc<Pane>, actions: Vec<Action>) {
         .perform_actions(actions);
 }
 
-pub fn read_from_pane_pty(pane: Arc<Pane>, sender: Sender<()>) -> anyhow::Result<()> {
+pub fn read_from_pane_pty(pane: Arc<Pane>) -> anyhow::Result<()> {
     let delay = Duration::from_millis(3);
     let pty_raw_fd = pane
         .as_raw_fd()?
@@ -109,6 +121,8 @@ pub fn read_from_pane_pty(pane: Arc<Pane>, sender: Sender<()>) -> anyhow::Result
     let mut action_size = 0;
     let mut hold = false;
     let mut deadline = None;
+
+    let events = Events::get();
 
     loop {
         match reader.read(&mut buf) {
@@ -186,11 +200,12 @@ pub fn read_from_pane_pty(pane: Arc<Pane>, sender: Sender<()>) -> anyhow::Result
                 }
             }
         }
-        sender.send(())?;
+        events.emit(Event::OutputUpdate(pane.id));
     }
 
     if !actions.is_empty() {
         perform_actions(&pane, std::mem::take(&mut actions));
+        events.emit(Event::OutputUpdate(pane.id));
     }
 
     Ok(())
