@@ -2,12 +2,22 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Events}};
+use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::create_paragraph};
 
 #[component]
 #[allow(non_snake_case)]
 pub fn ContentArea(pane: Arc<Pane>) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
+    let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
+    let mut character_size = use_signal_sync::<(f32, f32)>(|| (0., 0.));
+
+    use_hook(move || {
+        // Spawn a new thread to calculate character size to prevent blocking the rendering
+        std::thread::spawn(move || {
+            let paragraph = create_paragraph("T", 14.);
+            character_size.set((paragraph.min_intrinsic_width(), paragraph.height()))
+        });
+    });
 
     use_hook(move || {
         let events = Events::get();
@@ -18,7 +28,9 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
                         .lock()
                         .expect("Unable to obtain terminal");
 
-                    lines.set(render_terminal(&terminal));
+                    let (rendered_lines, rendered_cursor_position) = render_terminal(&terminal);
+                    lines.set(rendered_lines);
+                    cursor_position.set((rendered_cursor_position.x, rendered_cursor_position.y as usize));
                 }
                 _ => {}
             }
@@ -28,12 +40,22 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
     rsx!(
         rect {
             padding: "50 50 20 100",
-            for line in lines() {
+            for (line_index, line) in lines().iter().enumerate() {
                 rect {
                     padding: "2 0",
                     paragraph {
                         for segment in line.segments() {
                             text { "{segment.text}" }
+                        }
+                    }
+                    if line_index == cursor_position().1 {
+                        rect {
+                            width: "{character_size().0}",
+                            height: "{character_size().1}",
+                            background: "rgb(165, 172, 186)",
+                            position: "absolute",
+                            position_top: "0",
+                            position_left: "{character_size().0 * cursor_position().0 as f32}"
                         }
                     }
                 }

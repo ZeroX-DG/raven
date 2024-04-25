@@ -1,4 +1,4 @@
-use wezterm_term::Terminal;
+use wezterm_term::{CursorPosition, Terminal};
 
 #[derive(Clone, Debug)]
 pub struct LineElement {
@@ -21,7 +21,7 @@ impl LineElement {
     }
 }
 
-pub fn render_terminal(terminal: &Terminal) -> Vec<LineElement> {
+pub fn render_terminal(terminal: &Terminal) -> (Vec<LineElement>, CursorPosition) {
     let mut lines = vec![];
 
     terminal.screen().for_each_phys_line(|_, line| {
@@ -33,5 +33,7 @@ pub fn render_terminal(terminal: &Terminal) -> Vec<LineElement> {
         lines.push(LineElement::new(segments));
     });
 
-    lines
+    let cursor_position = terminal.cursor_pos();
+
+    (lines, cursor_position)
 }

@@ -3721,6 +3721,7 @@ dependencies = [
  "filedescriptor",
  "freya",
  "portable-pty",
+ "skia-safe",
  "termwiz",
  "wezterm-term",
 ]

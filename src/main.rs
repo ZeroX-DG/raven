@@ -3,6 +3,7 @@ mod core;
 mod state;
 mod events;
 mod icons;
+mod utils;
 
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
