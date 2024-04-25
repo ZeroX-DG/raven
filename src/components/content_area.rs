@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::create_paragraph};
+use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::get_cell_size};
 
 #[component]
 #[allow(non_snake_case)]
@@ -14,8 +14,7 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
     use_hook(move || {
         // Spawn a new thread to calculate character size to prevent blocking the rendering
         std::thread::spawn(move || {
-            let paragraph = create_paragraph("T", 14.);
-            character_size.set((paragraph.min_intrinsic_width(), paragraph.height()))
+            character_size.set(get_cell_size(14.));
         });
     });
 
@@ -44,6 +43,7 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
                 rect {
                     padding: "2 0",
                     paragraph {
+                        max_lines: "1",
                         for segment in line.segments() {
                             text { "{segment.text}" }
                         }

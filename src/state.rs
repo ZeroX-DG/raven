@@ -37,14 +37,18 @@ impl AppState {
     
     pub fn new_pane(&mut self) -> Arc<Pane> {
         let pane_id = alloc_pane_id();
+
+        let initial_rows = 24;
+        let initial_cols = 80;
+
         let pane = Arc::new(
             Pane::new(
                 pane_id,
                 TerminalSize {
-                    rows: 24,
-                    cols: 80,
-                    pixel_width: 100,
-                    pixel_height: 100,
+                    rows: initial_rows,
+                    cols: initial_cols,
+                    pixel_width: 0,
+                    pixel_height: 0,
                     dpi: 1,
                 },
             )

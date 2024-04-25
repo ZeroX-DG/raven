@@ -24,7 +24,13 @@ impl LineElement {
 pub fn render_terminal(terminal: &Terminal) -> (Vec<LineElement>, CursorPosition) {
     let mut lines = vec![];
 
-    terminal.screen().for_each_phys_line(|_, line| {
+    let screen = terminal.screen();
+    let first_visible_line_index = screen.scrollback_rows() - screen.physical_rows;
+
+    terminal.screen().for_each_phys_line(|index, line| {
+        if index < first_visible_line_index {
+            return;
+        }
         let segments = line.cluster(None).iter().map(|cluster| {
             LineSegment {
                 text: cluster.text.clone()

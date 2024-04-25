@@ -32,10 +32,10 @@ impl Pane {
     pub fn new(id: PaneId, size: TerminalSize) -> anyhow::Result<Self> {
         let pty_system = native_pty_system();
         let pty = pty_system.openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
+            rows: size.rows as u16,
+            cols: size.cols as u16,
+            pixel_width: size.pixel_width as u16,
+            pixel_height: size.pixel_height as u16,
         })?;
 
         let cmd = CommandBuilder::new("bash");

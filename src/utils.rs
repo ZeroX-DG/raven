@@ -23,3 +23,8 @@ pub fn create_paragraph(text: &str, font_size: f32) -> Paragraph {
 
     paragraph
 }
+
+pub fn get_cell_size(font_size: f32) -> (f32, f32) {
+    let paragraph = create_paragraph("T", font_size);
+    (paragraph.min_intrinsic_width(), paragraph.height())
+}
