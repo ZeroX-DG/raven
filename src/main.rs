@@ -9,6 +9,7 @@ use components::{ContentArea, Sidebar};
 use freya::prelude::*;
 use state::AppState;
 use events::{Event, Events};
+use wezterm_term::{KeyCode, KeyModifiers};
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
 
@@ -50,6 +51,55 @@ fn App() -> Element {
         });
     });
 
+    let onkeydown = move |e: KeyboardEvent| {
+        let Some(pane) = active_pane.read().clone() else {
+            return
+        };
+
+        let terminal = pane.terminal();
+
+        let mods = if e.modifiers.alt() {
+            KeyModifiers::ALT
+        } else if e.modifiers.shift() {
+            KeyModifiers::SHIFT
+        } else if e.modifiers.meta() {
+            KeyModifiers::SUPER
+        } else if e.modifiers.ctrl() {
+            KeyModifiers::CTRL
+        } else {
+            KeyModifiers::NONE
+        };
+
+        match &e.key {
+            Key::Character(ch) => {
+                let keycode = KeyCode::Char(ch.chars().next().unwrap());
+                terminal.lock().unwrap().key_down(keycode, mods).unwrap();
+            }
+            key => {
+                let recognised_key = match key {
+                    Key::Enter => Some(KeyCode::Enter),
+                    Key::Backspace => Some(KeyCode::Backspace),
+                    Key::Tab => Some(KeyCode::Tab),
+                    Key::ArrowDown => Some(KeyCode::DownArrow),
+                    Key::ArrowLeft => Some(KeyCode::LeftArrow),
+                    Key::ArrowRight => Some(KeyCode::RightArrow),
+                    Key::ArrowUp => Some(KeyCode::UpArrow),
+                    Key::Shift => Some(KeyCode::Shift),
+                    Key::Control => Some(KeyCode::Control),
+                    Key::Escape => Some(KeyCode::Escape),
+                    key => {
+                        println!("Unrecognised key: {}", key);
+                        None
+                    }
+                };
+
+                if let Some(key_code) = recognised_key {
+                    terminal.lock().unwrap().key_down(key_code, mods).unwrap();
+                }
+            }
+        };
+    };
+
     rsx!(
         rect {
             width: "100%",
@@ -58,6 +108,7 @@ fn App() -> Element {
             color: "rgb(86, 91, 120)",
             direction: "horizontal",
             font_size: "14",
+            onkeydown: onkeydown,
             Sidebar {
                 panes: state.read().panes()
             }

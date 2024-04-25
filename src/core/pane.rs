@@ -38,7 +38,7 @@ impl Pane {
             pixel_height: size.pixel_height as u16,
         })?;
 
-        let cmd = CommandBuilder::new("bash");
+        let cmd = CommandBuilder::new("zsh");
         pty.slave.spawn_command(cmd)?;
         let mut terminal = Terminal::new(
             size,
