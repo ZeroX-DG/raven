@@ -10,7 +10,7 @@ use termwiz::escape::{
     csi::{DecPrivateMode, DecPrivateModeCode, Device, Mode},
     Action, CSI,
 };
-use wezterm_term::{color::ColorPalette, Terminal, TerminalConfiguration, TerminalSize};
+use wezterm_term::{color::ColorPalette, Alert, AlertHandler, Terminal, TerminalConfiguration, TerminalSize};
 
 use crate::events::{Event, Events};
 
@@ -25,7 +25,7 @@ pub struct Pane {
     pub id: PaneId,
     terminal: Mutex<Terminal>,
     pty: Mutex<Box<dyn MasterPty + Send>>,
-    title: String,
+    title: Mutex<String>,
 }
 
 impl Pane {
@@ -40,7 +40,7 @@ impl Pane {
 
         let cmd = CommandBuilder::new("bash");
         pty.slave.spawn_command(cmd)?;
-        let terminal = Terminal::new(
+        let mut terminal = Terminal::new(
             size,
             Arc::new(TermConfig::new()),
             "Raven",
@@ -48,16 +48,22 @@ impl Pane {
             pty.master.take_writer()?,
         );
 
+        terminal.set_notification_handler(Box::new(NotificationHandler { pane_id: id }));
+
         Ok(Self {
             id,
             terminal: Mutex::new(terminal),
             pty: Mutex::new(pty.master),
-            title: format!("Terminal #{}", id)
+            title: Mutex::new(format!("Terminal #{}", id))
         })
     }
 
-    pub fn title(&self) -> &str {
-        &self.title
+    pub fn title(&self) -> String {
+        self.title.lock().unwrap().clone()
+    }
+
+    pub fn set_title(&self, title: String) {
+        *self.title.lock().unwrap() = title;
     }
 
     pub fn reader(&self) -> anyhow::Result<Box<dyn Read + Send>> {
@@ -83,6 +89,25 @@ impl Pane {
 impl PartialEq for Pane {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+    }
+}
+
+struct NotificationHandler {
+    pane_id: PaneId
+}
+
+impl AlertHandler for NotificationHandler {
+    fn alert(&mut self, alert: wezterm_term::Alert) {
+        let events = Events::get();
+        match alert {
+            Alert::TabTitleChanged(title) => {
+                events.emit(Event::PaneTitle {
+                    pane_id: self.pane_id,
+                    title: title.unwrap_or(String::new())
+                });
+            }
+            _ => {}
+        }
     }
 }
 
@@ -206,12 +231,12 @@ pub fn read_from_pane_pty(pane: Arc<Pane>) -> anyhow::Result<()> {
                 }
             }
         }
-        events.emit(Event::OutputUpdate(pane.id));
+        events.emit(Event::PaneOutput(pane.id));
     }
 
     if !actions.is_empty() {
         perform_actions(&pane, std::mem::take(&mut actions));
-        events.emit(Event::OutputUpdate(pane.id));
+        events.emit(Event::PaneOutput(pane.id));
     }
 
     Ok(())

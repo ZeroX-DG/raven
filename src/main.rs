@@ -7,6 +7,7 @@ mod icons;
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
 use state::AppState;
+use events::{Event, Events};
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
 
@@ -27,13 +28,26 @@ fn main() {
 #[component]
 #[allow(non_snake_case)]
 fn App() -> Element {
-    let state = use_signal(|| {
+    let state = use_signal_sync(|| {
         let mut state = AppState::new();
         let pane = state.new_pane();
         state.set_active_pane(pane.id);
         state
     });
     let active_pane = use_memo(move || state.read().active_pane());
+
+    use_hook(|| {
+        let events = Events::get();
+        events.subscribe(move |event| match event {
+            Event::PaneTitle { pane_id, title } => {
+                let pane = state.read().get_pane(pane_id);
+                if let Some(pane) = pane {
+                    pane.set_title(title);
+                }
+            }
+            _ => {}
+        });
+    });
 
     rsx!(
         rect {

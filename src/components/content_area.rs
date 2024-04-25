@@ -13,7 +13,7 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
         let events = Events::get();
         events.subscribe(move |event| {
             match event {
-                Event::OutputUpdate(pane_id) if pane_id == pane.id => {
+                Event::PaneOutput(pane_id) if pane_id == pane.id => {
                     let terminal = pane.terminal()
                         .lock()
                         .expect("Unable to obtain terminal");

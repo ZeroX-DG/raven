@@ -10,7 +10,11 @@ pub struct Events {
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    OutputUpdate(PaneId)
+    PaneOutput(PaneId),
+    PaneTitle {
+        pane_id: PaneId,
+        title: String,
+    },
 }
 
 impl Debug for Events {

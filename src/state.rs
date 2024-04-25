@@ -30,6 +30,10 @@ impl AppState {
     pub fn panes(&self) -> Vec<Arc<Pane>> {
         self.panes.clone()
     }
+
+    pub fn get_pane(&self, id: PaneId) -> Option<Arc<Pane>> {
+        self.panes.iter().find(|pane| pane.id == id).cloned()
+    }
     
     pub fn new_pane(&mut self) -> Arc<Pane> {
         let pane_id = alloc_pane_id();
