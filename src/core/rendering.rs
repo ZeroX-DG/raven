@@ -1,5 +1,5 @@
 use termwiz::cellcluster::CellCluster;
-use wezterm_term::{CursorPosition, Line, Terminal};
+use wezterm_term::{CellRef, CursorPosition, Line, Terminal};
 
 #[derive(Clone, Debug)]
 pub struct LineElement(Line);
@@ -7,6 +7,15 @@ pub struct LineElement(Line);
 impl LineElement {
     pub fn clusters(&self) -> Vec<CellCluster> {
         self.0.cluster(None)
+    }
+
+    pub fn cell(&self, index: usize) -> Option<CellRef> {
+        self.0.get_cell(index)
+    }
+
+    pub fn cell_content(&self, index: usize) -> String {
+        self.cell(index).map(|cell| cell.str().to_string())
+            .unwrap_or_default()
     }
 }
 

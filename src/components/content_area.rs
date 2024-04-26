@@ -52,10 +52,18 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
                         rect {
                             width: "{character_size().0}",
                             height: "{character_size().1}",
+                            color: "rgb(17, 21, 28)",
                             background: "rgb(165, 172, 186)",
+                            layer: "-10",
                             position: "absolute",
                             position_top: "0",
-                            position_left: "{character_size().0 * cursor_position().0 as f32}"
+                            position_left: "{character_size().0 * cursor_position().0 as f32}",
+
+                            rect {
+                                label {
+                                    "{line.cell_content(cursor_position().0)}"
+                                }
+                            }
                         }
                     }
                 }
