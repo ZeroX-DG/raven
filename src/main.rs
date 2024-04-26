@@ -37,6 +37,7 @@ fn App() -> Element {
         state
     });
     let active_pane = use_memo(move || state.read().active_pane());
+    let mut focus_manager = use_focus();
 
     use_hook(|| {
         let events = Events::get();
@@ -52,6 +53,7 @@ fn App() -> Element {
     });
 
     let onkeydown = move |e: KeyboardEvent| {
+        focus_manager.prevent_navigation();
         let Some(pane) = active_pane.read().clone() else {
             return
         };
