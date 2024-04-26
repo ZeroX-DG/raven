@@ -44,7 +44,7 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
                     padding: "2 0",
                     paragraph {
                         max_lines: "1",
-                        for segment in line.segments() {
+                        for segment in line.clusters() {
                             text { "{segment.text}" }
                         }
                     }
