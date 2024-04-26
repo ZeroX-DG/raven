@@ -9,12 +9,12 @@ use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Even
 pub fn ContentArea(pane: Arc<Pane>) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
-    let mut character_size = use_signal_sync::<(f32, f32)>(|| (0., 0.));
+    let mut cell_size = use_signal::<(f32, f32)>(|| (0., 0.));
 
     use_hook(move || {
-        // Spawn a new thread to calculate character size to prevent blocking the rendering
-        std::thread::spawn(move || {
-            character_size.set(get_cell_size(14.));
+        // Calculate cell size async to prevent blocking rendering
+        spawn(async move {
+            cell_size.set(get_cell_size(14.));
         });
     });
 
@@ -50,14 +50,14 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
                     }
                     if line_index == cursor_position().1 {
                         rect {
-                            width: "{character_size().0}",
-                            height: "{character_size().1}",
+                            width: "{cell_size().0}",
+                            height: "{cell_size().1}",
                             color: "rgb(17, 21, 28)",
                             background: "rgb(165, 172, 186)",
                             layer: "-10",
                             position: "absolute",
                             position_top: "0",
-                            position_left: "{character_size().0 * cursor_position().0 as f32}",
+                            position_left: "{cell_size().0 * cursor_position().0 as f32}",
 
                             rect {
                                 label {
