@@ -1,5 +1,5 @@
 # Raven
-> A toy terminal powered by wezterm & freya
+> A toy terminal emulator powered by wezterm & freya
 
 <p align="center">
   <img src="screenshot.png">
