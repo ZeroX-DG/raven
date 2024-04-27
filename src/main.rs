@@ -39,7 +39,7 @@ fn App() -> Element {
     let active_pane = use_memo(move || state.read().active_pane());
     let mut focus_manager = use_focus();
 
-    let font_size = 16.;
+    let font_size = 14.;
 
     use_hook(|| {
         let events = Events::get();
@@ -117,10 +117,14 @@ fn App() -> Element {
                 panes: state.read().panes()
             }
 
-            if let Some(pane) = active_pane() {
-                ContentArea {
-                    pane: pane,
-                    font_size: font_size
+            rect {
+                width: "calc(100% - 250)",
+                height: "100%",
+                if let Some(pane) = active_pane() {
+                    ContentArea {
+                        pane: pane,
+                        font_size: font_size
+                    }
                 }
             }
         }

@@ -13,7 +13,7 @@ pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
 
     let padding_top = 50.;
     let padding_right = 50.;
-    let padding_bottom = 20.;
+    let padding_bottom = 50.;
     let padding_left = 100.;
     let line_spacing = 2;
 
@@ -62,7 +62,7 @@ pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
     rsx!(
         rect {
             reference: node_ref,
-            width: "75%",
+            width: "100%",
             height: "100%",
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             for (line_index, line) in lines().iter().enumerate() {
