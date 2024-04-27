@@ -6,15 +6,38 @@ use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Even
 
 #[component]
 #[allow(non_snake_case)]
-pub fn ContentArea(pane: Arc<Pane>) -> Element {
+pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
     let mut cell_size = use_signal::<(f32, f32)>(|| (0., 0.));
 
+    let padding_top = 50.;
+    let padding_right = 50.;
+    let padding_bottom = 20.;
+    let padding_left = 100.;
+    let line_spacing = 2;
+
+    let (node_ref, size) = use_node_signal();
+
+    let terminal_size = use_memo(move || {
+        let size = size.read();
+        let width = f32::max(size.area.width() - (padding_left + padding_right), 0.);
+        let height = f32::max(size.area.height() - (padding_top + padding_bottom), 0.);
+        (width, height)
+    });
+
+    use_memo({
+        let pane = pane.clone();
+        move || {
+            let terminal_size = terminal_size();
+            pane.resize(terminal_size, *cell_size.read(), line_spacing);
+        }
+    });
+
     use_hook(move || {
         // Calculate cell size async to prevent blocking rendering
         spawn(async move {
-            cell_size.set(get_cell_size(14.));
+            cell_size.set(get_cell_size(font_size));
         });
     });
 
@@ -38,10 +61,13 @@ pub fn ContentArea(pane: Arc<Pane>) -> Element {
 
     rsx!(
         rect {
-            padding: "50 50 20 100",
+            reference: node_ref,
+            width: "75%",
+            height: "100%",
+            padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             for (line_index, line) in lines().iter().enumerate() {
                 rect {
-                    padding: "2 0",
+                    padding: "{line_spacing} 0",
                     paragraph {
                         max_lines: "1",
                         for segment in line.clusters() {

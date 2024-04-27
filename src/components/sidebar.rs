@@ -10,6 +10,8 @@ use crate::icons::TERMINAL_ICON;
 pub fn Sidebar(panes: Vec<Arc<Pane>>) -> Element {
     rsx!(
         rect {
+            width: "25%",
+            height: "100%",
             padding: "50 50 20 30",
             label {
                 "Workspace"

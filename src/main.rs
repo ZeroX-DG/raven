@@ -39,6 +39,8 @@ fn App() -> Element {
     let active_pane = use_memo(move || state.read().active_pane());
     let mut focus_manager = use_focus();
 
+    let font_size = 16.;
+
     use_hook(|| {
         let events = Events::get();
         events.subscribe(move |event| match event {
@@ -109,7 +111,7 @@ fn App() -> Element {
             background: "rgb(17, 21, 28)",
             color: "rgb(86, 91, 120)",
             direction: "horizontal",
-            font_size: "14",
+            font_size: "{font_size}",
             onkeydown: onkeydown,
             Sidebar {
                 panes: state.read().panes()
@@ -117,7 +119,8 @@ fn App() -> Element {
 
             if let Some(pane) = active_pane() {
                 ContentArea {
-                    pane: pane
+                    pane: pane,
+                    font_size: font_size
                 }
             }
         }

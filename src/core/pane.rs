@@ -1,7 +1,5 @@
 use std::{
-    io::Read,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    cmp::max, io::Read, sync::{Arc, Mutex}, time::{Duration, Instant}
 };
 
 use filedescriptor::{poll, pollfd, POLLIN};
@@ -83,6 +81,43 @@ impl Pane {
 
     pub fn terminal(&self) -> &Mutex<Terminal> {
         &self.terminal
+    }
+
+    pub fn resize(&self, terminal_size: (f32, f32), cell_size: (f32, f32), row_spacing: usize) {
+        let mut terminal = self.terminal()
+                .lock()
+                .expect("Unable to obtain terminal");
+
+        let (terminal_width, terminal_height) = terminal_size;
+        let (cell_width, cell_height) = cell_size;
+
+        let cols = max((terminal_width / cell_width) as usize, 1);
+        let rows = max((terminal_height / cell_height) as usize, 1);
+
+        let total_row_spacing = row_spacing * rows;
+        let terminal_height_with_row_spacing = terminal_height - total_row_spacing as f32;
+
+        let rows = max((terminal_height_with_row_spacing / cell_height) as usize, 1);
+
+        self.pty.lock().unwrap().resize(PtySize {
+            rows: rows as u16,
+            cols: cols as u16,
+            pixel_width: terminal_width as u16,
+            pixel_height: terminal_height as u16
+        }).expect("Unable to resize pty");
+
+        terminal.resize(TerminalSize {
+            rows,
+            cols,
+            pixel_height: terminal_height as usize,
+            pixel_width: terminal_width as usize,
+            dpi: 1,
+        });
+
+        std::mem::drop(terminal);
+
+        let events = Events::get();
+        events.emit(Event::PaneOutput(self.id));
     }
 }
 
