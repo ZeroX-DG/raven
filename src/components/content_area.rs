@@ -9,7 +9,7 @@ use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Even
 pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
-    let mut cell_size = use_signal::<(f32, f32)>(|| (0., 0.));
+    let mut cell_size = use_signal::<(f32, f32)>(|| (1., 1.));
 
     let padding_top = 50.;
     let padding_right = 50.;

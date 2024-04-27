@@ -1,5 +1,5 @@
 use std::{
-    cmp::max, io::Read, sync::{Arc, Mutex}, time::{Duration, Instant}
+    io::Read, sync::{Arc, Mutex}, time::{Duration, Instant}
 };
 
 use filedescriptor::{poll, pollfd, POLLIN};
@@ -36,7 +36,9 @@ impl Pane {
             pixel_height: size.pixel_height as u16,
         })?;
 
-        let cmd = CommandBuilder::new("zsh");
+        let shell = std::env::var("SHELL").unwrap_or(String::from("bash"));
+
+        let cmd = CommandBuilder::new(shell);
         pty.slave.spawn_command(cmd)?;
         let mut terminal = Terminal::new(
             size,
@@ -91,13 +93,13 @@ impl Pane {
         let (terminal_width, terminal_height) = terminal_size;
         let (cell_width, cell_height) = cell_size;
 
-        let cols = max((terminal_width / cell_width) as usize, 1);
-        let rows = max((terminal_height / cell_height) as usize, 1);
+        let cols = f32::max(terminal_width / cell_width, 1.) as usize;
+        let rows = f32::max(terminal_height / cell_height, 1.) as usize;
 
         let total_row_spacing = row_spacing * rows;
         let terminal_height_with_row_spacing = terminal_height - total_row_spacing as f32;
 
-        let rows = max((terminal_height_with_row_spacing / cell_height) as usize, 1);
+        let rows = f32::max(terminal_height_with_row_spacing / cell_height, 1.) as usize;
 
         self.pty.lock().unwrap().resize(PtySize {
             rows: rows as u16,
