@@ -10,6 +10,7 @@ use freya::prelude::*;
 use state::AppState;
 use events::{Event, Events};
 use wezterm_term::{KeyCode, KeyModifiers};
+use arboard::Clipboard;
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
 
@@ -76,6 +77,21 @@ fn App() -> Element {
 
         match &e.key {
             Key::Character(ch) => {
+                let meta_or_ctrl = if cfg!(target_os = "macos") {
+                    e.modifiers.meta()
+                } else {
+                    e.modifiers.ctrl()
+                };
+
+                // Handle pasting content to terminal
+                if ch == "v" && meta_or_ctrl {
+                    let mut clipboard = Clipboard::new().unwrap();
+                    let content = clipboard.get_text().unwrap();
+                    terminal.lock().unwrap().send_paste(&content).unwrap();
+                    return;
+                };
+
+                // Handle typing regular keys
                 let keycode = KeyCode::Char(ch.chars().next().unwrap());
                 terminal.lock().unwrap().key_down(keycode, mods).unwrap();
             }
@@ -91,6 +107,7 @@ fn App() -> Element {
                     Key::Shift => Some(KeyCode::Shift),
                     Key::Control => Some(KeyCode::Control),
                     Key::Escape => Some(KeyCode::Escape),
+                    Key::Super => Some(KeyCode::Super),
                     key => {
                         println!("Unrecognised key: {}", key);
                         None
