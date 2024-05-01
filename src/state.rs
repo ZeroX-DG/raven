@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use wezterm_term::TerminalSize;
 
-use crate::core::pane::{alloc_pane_id, read_from_pane_pty, Pane, PaneId};
+use crate::pane::{alloc_pane_id, read_from_pane_pty, Pane, PaneId};
 
 pub struct AppState {
     panes: Vec<Arc<Pane>>,

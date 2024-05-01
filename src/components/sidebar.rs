@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::core::pane::Pane;
+use crate::pane::Pane;
 use crate::icons::TERMINAL_ICON;
 
 #[component]

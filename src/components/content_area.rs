@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{core::{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::get_cell_size};
+use crate::{{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::get_cell_size};
 
 #[component]
 #[allow(non_snake_case)]

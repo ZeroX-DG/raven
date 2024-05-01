@@ -1,5 +1,6 @@
 mod components;
-mod core;
+mod pane;
+mod rendering;
 mod state;
 mod events;
 mod icons;

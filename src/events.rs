@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::{Arc, Mutex, OnceLock}};
 
-use crate::core::pane::PaneId;
+use crate::pane::PaneId;
 
 static EVENTS: OnceLock<Arc<Events>> = OnceLock::new();
 
