@@ -16,7 +16,7 @@ use arboard::Clipboard;
 use config::TerminalConfig;
 use utils::get_cell_size;
 
-const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
+const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf");
 
 fn main() {
     launch_cfg(

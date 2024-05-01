@@ -48,8 +48,8 @@ pub fn ContentArea(
                         .expect("Unable to obtain terminal");
 
                     let (rendered_lines, rendered_cursor_position) = render_terminal(&terminal);
-                    lines.set(rendered_lines);
-                    cursor_position.set((rendered_cursor_position.x, rendered_cursor_position.y as usize));
+                    *lines.write() = rendered_lines;
+                    *cursor_position.write() = (rendered_cursor_position.x, rendered_cursor_position.y as usize);
                 }
                 _ => {}
             }
