@@ -5,6 +5,7 @@ mod state;
 mod events;
 mod icons;
 mod utils;
+mod config;
 
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
@@ -12,6 +13,8 @@ use state::AppState;
 use events::{Event, Events};
 use wezterm_term::{KeyCode, KeyModifiers};
 use arboard::Clipboard;
+use config::TerminalConfig;
+use utils::get_cell_size;
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFontPropo-Regular.ttf");
 
@@ -41,7 +44,12 @@ fn App() -> Element {
     let active_pane = use_memo(move || state.read().active_pane());
     let mut focus_manager = use_focus();
 
-    let font_size = 14.;
+    let config = use_signal(|| TerminalConfig::default());
+
+    let cell_size = use_memo(move || {
+        let font_size = config.read().font_size;
+        get_cell_size(font_size)
+    });
 
     use_hook(|| {
         let events = Events::get();
@@ -129,7 +137,7 @@ fn App() -> Element {
             background: "rgb(17, 21, 28)",
             color: "rgb(86, 91, 120)",
             direction: "horizontal",
-            font_size: "{font_size}",
+            font_size: "{config.read().font_size}",
             onkeydown: onkeydown,
             Sidebar {
                 panes: state.read().panes()
@@ -141,7 +149,7 @@ fn App() -> Element {
                 if let Some(pane) = active_pane() {
                     ContentArea {
                         pane: pane,
-                        font_size: font_size
+                        cell_size: cell_size()
                     }
                 }
             }

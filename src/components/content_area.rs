@@ -2,14 +2,18 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{{pane::Pane, rendering::render_terminal}, events::{Event, Events}, utils::get_cell_size};
+use crate::{{pane::Pane, rendering::render_terminal}, events::{Event, Events}};
 
 #[component]
 #[allow(non_snake_case)]
-pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
+pub fn ContentArea(
+    // Pane to render the content of
+    pane: Arc<Pane>,
+    // Size of each cell (width, height)
+    cell_size: (f32, f32)
+) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
-    let mut cell_size = use_signal::<(f32, f32)>(|| (1., 1.));
 
     let padding_top = 50.;
     let padding_right = 50.;
@@ -30,15 +34,8 @@ pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
         let pane = pane.clone();
         move || {
             let terminal_size = terminal_size();
-            pane.resize(terminal_size, *cell_size.read(), line_spacing);
+            pane.resize(terminal_size, cell_size, line_spacing);
         }
-    });
-
-    use_hook(move || {
-        // Calculate cell size async to prevent blocking rendering
-        spawn(async move {
-            cell_size.set(get_cell_size(font_size));
-        });
     });
 
     use_hook(move || {
@@ -76,14 +73,14 @@ pub fn ContentArea(pane: Arc<Pane>, font_size: f32) -> Element {
                     }
                     if line_index == cursor_position().1 {
                         rect {
-                            width: "{cell_size().0}",
-                            height: "{cell_size().1}",
+                            width: "{cell_size.0}",
+                            height: "{cell_size.1}",
                             color: "rgb(17, 21, 28)",
                             background: "rgb(165, 172, 186)",
                             layer: "-10",
                             position: "absolute",
                             position_top: "0",
-                            position_left: "{cell_size().0 * cursor_position().0 as f32}",
+                            position_left: "{cell_size.0 * cursor_position().0 as f32}",
 
                             rect {
                                 label {
