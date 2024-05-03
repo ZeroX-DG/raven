@@ -12,17 +12,25 @@ pub fn Sidebar(panes: Vec<Arc<Pane>>) -> Element {
         rect {
             width: "250",
             height: "100%",
-            padding: "50 50 20 30",
-            label {
-                "Workspace"
-            }
+            
+            WindowDragArea {
+                rect {
+                    padding: "50 50 20 30",
+                    width: "100%",
+                    height: "100%",
 
-            for pane in panes {
-                paragraph {
-                    margin: "8 0",
-                    text { font_size: "12", color: "rgb(86, 91, 120, 0.6)", "{TERMINAL_ICON}" }
-                    text { "  " }
-                    text { color: "rgb(165, 172, 186)", "{pane.title()}" }
+                    label {
+                        "Workspace"
+                    }
+
+                    for pane in panes {
+                        paragraph {
+                            margin: "8 0",
+                            text { font_size: "12", color: "rgb(86, 91, 120, 0.6)", "{TERMINAL_ICON}" }
+                            text { "  " }
+                            text { color: "rgb(165, 172, 186)", "{pane.title()}" }
+                        }
+                    }
                 }
             }
         }

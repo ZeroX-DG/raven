@@ -16,7 +16,7 @@ This is an experimentation project to test out the rendering performance of frey
 ## Features
 
 - [x] Resize
-- [ ] Drag to move
+- [x] Drag to move
 - [ ] Scrolling
 - [ ] Colour
 - [ ] Selection

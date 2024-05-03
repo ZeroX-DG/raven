@@ -146,10 +146,13 @@ fn App() -> Element {
             rect {
                 width: "calc(100% - 250)",
                 height: "100%",
-                if let Some(pane) = active_pane() {
-                    ContentArea {
-                        pane: pane,
-                        cell_size: cell_size()
+
+                WindowDragArea {
+                    if let Some(pane) = active_pane() {
+                        ContentArea {
+                            pane: pane,
+                            cell_size: cell_size()
+                        }
                     }
                 }
             }
