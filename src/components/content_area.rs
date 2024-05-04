@@ -72,28 +72,32 @@ pub fn ContentArea(
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             onwheel: onwheel,
             for (line_index, line) in lines().iter().enumerate() {
-                rect {
-                    padding: "{line_spacing} 0",
-                    paragraph {
-                        max_lines: "1",
-                        for segment in line.clusters() {
-                            text { "{segment.text}" }
+                CursorArea {
+                    icon: CursorIcon::Text,
+                    rect {
+                        padding: "{line_spacing} 0",
+                        onmousedown: |e| e.stop_propagation(),
+                        paragraph {
+                            max_lines: "1",
+                            for segment in line.clusters() {
+                                text { "{segment.text}" }
+                            }
                         }
-                    }
-                    if line_index == cursor_position().1 && scroll_top() == 0 {
-                        rect {
-                            width: "{cell_size.0}",
-                            height: "{cell_size.1}",
-                            color: "rgb(17, 21, 28)",
-                            background: "rgb(165, 172, 186)",
-                            layer: "-10",
-                            position: "absolute",
-                            position_top: "0",
-                            position_left: "{cell_size.0 * cursor_position().0 as f32}",
-
+                        if line_index == cursor_position().1 && scroll_top() == 0 {
                             rect {
-                                label {
-                                    "{line.cell_content(cursor_position().0)}"
+                                width: "{cell_size.0}",
+                                height: "{cell_size.1}",
+                                color: "rgb(17, 21, 28)",
+                                background: "rgb(165, 172, 186)",
+                                layer: "-10",
+                                position: "absolute",
+                                position_top: "0",
+                                position_left: "{cell_size.0 * cursor_position().0 as f32}",
+
+                                rect {
+                                    label {
+                                        "{line.cell_content(cursor_position().0)}"
+                                    }
                                 }
                             }
                         }
