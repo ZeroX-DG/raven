@@ -9,6 +9,8 @@ mod config;
 
 use components::{ContentArea, Sidebar};
 use freya::prelude::*;
+use log::LevelFilter;
+use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use state::AppState;
 use events::{Event, Events};
 use wezterm_term::{KeyCode, KeyModifiers};
@@ -19,6 +21,18 @@ use utils::get_cell_size;
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf");
 
 fn main() {
+    let config = ConfigBuilder::new()
+        .add_filter_ignore_str("wezterm_term")
+        .set_target_level(LevelFilter::Info)
+        .build();
+
+    TermLogger::init(
+        LevelFilter::Debug,
+        config,
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    ).ok();
+
     launch_cfg(
         App,
         LaunchConfig::<()>::builder()

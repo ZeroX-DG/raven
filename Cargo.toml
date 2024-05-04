@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 dioxus = { version = "0.4", features = ["macro", "hooks"], default-features = false }
 anyhow = "*"
+log = "*"
+simplelog = { version = "^0.11.0", features = ["paris"]}
 freya = { git = "https://github.com/marc2332/freya.git", rev = "7b68806" }
 portable-pty = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
 termwiz = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{{pane::Pane, rendering::render_terminal}, events::{Event, Events}};
+use crate::{pane::Pane, events::{Event, Events}};
 
 #[component]
 #[allow(non_snake_case)]
@@ -14,6 +14,7 @@ pub fn ContentArea(
 ) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
+    let mut scroll_top = use_signal_sync(|| 0);
 
     let padding_top = 50.;
     let padding_right = 50.;
@@ -30,6 +31,14 @@ pub fn ContentArea(
         (width, height)
     });
 
+    let onwheel = {
+        let pane = pane.clone();
+        move |e: WheelEvent| {
+            let delta_y = e.data.get_delta_y();
+            pane.scroll(delta_y);
+        }
+    };
+
     use_memo({
         let pane = pane.clone();
         move || {
@@ -43,13 +52,11 @@ pub fn ContentArea(
         events.subscribe(move |event| {
             match event {
                 Event::PaneOutput(pane_id) if pane_id == pane.id => {
-                    let terminal = pane.terminal()
-                        .lock()
-                        .expect("Unable to obtain terminal");
+                    let rendered = pane.render();
 
-                    let (rendered_lines, rendered_cursor_position) = render_terminal(&terminal);
-                    *lines.write() = rendered_lines;
-                    *cursor_position.write() = (rendered_cursor_position.x, rendered_cursor_position.y as usize);
+                    *lines.write() = rendered.lines;
+                    *cursor_position.write() = (rendered.cursor.x, rendered.cursor.y as usize);
+                    *scroll_top.write() = rendered.scroll_top;
                 }
                 _ => {}
             }
@@ -62,6 +69,7 @@ pub fn ContentArea(
             width: "100%",
             height: "100%",
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
+            onwheel: onwheel,
             for (line_index, line) in lines().iter().enumerate() {
                 rect {
                     padding: "{line_spacing} 0",
@@ -71,7 +79,7 @@ pub fn ContentArea(
                             text { "{segment.text}" }
                         }
                     }
-                    if line_index == cursor_position().1 {
+                    if line_index == cursor_position().1 && scroll_top() == 0 {
                         rect {
                             width: "{cell_size.0}",
                             height: "{cell_size.1}",

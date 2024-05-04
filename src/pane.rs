@@ -8,9 +8,9 @@ use termwiz::escape::{
     csi::{DecPrivateMode, DecPrivateModeCode, Device, Mode},
     Action, CSI,
 };
-use wezterm_term::{color::ColorPalette, Alert, AlertHandler, Terminal, TerminalConfiguration, TerminalSize};
+use wezterm_term::{color::ColorPalette, Alert, AlertHandler, CursorPosition, Terminal, TerminalConfiguration, TerminalSize};
 
-use crate::events::{Event, Events};
+use crate::{events::{Event, Events}, rendering::{render_terminal, LineElement}};
 
 pub type PaneId = usize;
 static PANE_ID: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
@@ -24,6 +24,7 @@ pub struct Pane {
     terminal: Mutex<Terminal>,
     pty: Mutex<Box<dyn MasterPty + Send>>,
     title: Mutex<String>,
+    scroll_top: Mutex<usize>
 }
 
 impl Pane {
@@ -54,7 +55,8 @@ impl Pane {
             id,
             terminal: Mutex::new(terminal),
             pty: Mutex::new(pty.master),
-            title: Mutex::new(format!("Terminal #{}", id))
+            title: Mutex::new(format!("Terminal #{}", id)),
+            scroll_top: Mutex::new(0)
         })
     }
 
@@ -121,6 +123,49 @@ impl Pane {
         let events = Events::get();
         events.emit(Event::PaneOutput(self.id));
     }
+
+    pub fn scroll(&self, delta_y: f64) {
+        let terminal = self.terminal().lock().unwrap();
+        let screen = terminal.screen();
+        let max_offset = screen.scrollback_rows() - screen.physical_rows;
+        let current_offset = *self.scroll_top.lock().unwrap() as f64;
+        let mut new_offset = current_offset + delta_y * 0.2;
+
+        if new_offset < 0. {
+            new_offset = 0.;
+        } else if new_offset as usize > max_offset {
+            new_offset = max_offset as f64;
+        }
+
+        *self.scroll_top.lock().unwrap() = new_offset as usize;
+
+        std::mem::drop(terminal);
+        
+        let events = Events::get();
+        events.emit(Event::PaneOutput(self.id));
+    }
+
+    pub fn render(&self) -> RenderedState {
+        let terminal = self.terminal()
+            .lock()
+            .expect("Unable to obtain terminal");
+
+        let scroll_top = *self.scroll_top.lock().unwrap();
+
+        let (rendered_lines, rendered_cursor_position) = render_terminal(&terminal, scroll_top);
+
+        RenderedState {
+            lines: rendered_lines,
+            cursor: rendered_cursor_position,
+            scroll_top
+        }
+    }
+}
+
+pub struct RenderedState {
+    pub lines: Vec<LineElement>,
+    pub cursor: CursorPosition,
+    pub scroll_top: usize
 }
 
 impl PartialEq for Pane {

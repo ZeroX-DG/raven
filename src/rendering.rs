@@ -19,11 +19,11 @@ impl LineElement {
     }
 }
 
-pub fn render_terminal(terminal: &Terminal) -> (Vec<LineElement>, CursorPosition) {
+pub fn render_terminal(terminal: &Terminal, scroll_top: usize) -> (Vec<LineElement>, CursorPosition) {
     let mut lines = vec![];
 
     let screen = terminal.screen();
-    let first_visible_line_index = screen.scrollback_rows() - screen.physical_rows;
+    let first_visible_line_index = screen.scrollback_rows() - screen.physical_rows - scroll_top;
 
     terminal.screen().for_each_phys_line(|index, line| {
         if index < first_visible_line_index {
