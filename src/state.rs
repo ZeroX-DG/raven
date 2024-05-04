@@ -13,14 +13,14 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             panes: Vec::new(),
-            active_pane_id: None
+            active_pane_id: None,
         }
     }
 
     pub fn active_pane(&self) -> Option<Arc<Pane>> {
-        self.active_pane_id.map(|active_id| {
-            self.panes.iter().find(|pane| pane.id == active_id).cloned()
-        }).flatten()
+        self.active_pane_id
+            .map(|active_id| self.panes.iter().find(|pane| pane.id == active_id).cloned())
+            .flatten()
     }
 
     pub fn set_active_pane(&mut self, pane_id: PaneId) {
@@ -34,7 +34,7 @@ impl AppState {
     pub fn get_pane(&self, id: PaneId) -> Option<Arc<Pane>> {
         self.panes.iter().find(|pane| pane.id == id).cloned()
     }
-    
+
     pub fn new_pane(&mut self) -> Arc<Pane> {
         let pane_id = alloc_pane_id();
 

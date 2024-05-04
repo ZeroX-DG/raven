@@ -14,12 +14,16 @@ impl LineElement {
     }
 
     pub fn cell_content(&self, index: usize) -> String {
-        self.cell(index).map(|cell| cell.str().to_string())
+        self.cell(index)
+            .map(|cell| cell.str().to_string())
             .unwrap_or_default()
     }
 }
 
-pub fn render_terminal(terminal: &Terminal, scroll_top: usize) -> (Vec<LineElement>, CursorPosition) {
+pub fn render_terminal(
+    terminal: &Terminal,
+    scroll_top: usize,
+) -> (Vec<LineElement>, CursorPosition) {
     let mut lines = vec![];
 
     let screen = terminal.screen();

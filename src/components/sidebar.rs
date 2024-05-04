@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::pane::Pane;
 use crate::icons::TERMINAL_ICON;
+use crate::pane::Pane;
 
 #[component]
 #[allow(non_snake_case)]
@@ -12,7 +12,7 @@ pub fn Sidebar(panes: Vec<Arc<Pane>>) -> Element {
         rect {
             width: "250",
             height: "100%",
-            
+
             WindowDragArea {
                 rect {
                     padding: "50 50 20 30",

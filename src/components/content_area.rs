@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{pane::Pane, events::{Event, Events}};
+use crate::{
+    events::{Event, Events},
+    pane::Pane,
+};
 
 #[component]
 #[allow(non_snake_case)]
@@ -10,7 +13,7 @@ pub fn ContentArea(
     // Pane to render the content of
     pane: Arc<Pane>,
     // Size of each cell (width, height)
-    cell_size: (f32, f32)
+    cell_size: (f32, f32),
 ) -> Element {
     let mut lines = use_signal_sync(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
@@ -49,17 +52,15 @@ pub fn ContentArea(
 
     use_hook(move || {
         let events = Events::get();
-        events.subscribe(move |event| {
-            match event {
-                Event::PaneOutput(pane_id) if pane_id == pane.id => {
-                    let rendered = pane.render();
+        events.subscribe(move |event| match event {
+            Event::PaneOutput(pane_id) if pane_id == pane.id => {
+                let rendered = pane.render();
 
-                    *lines.write() = rendered.lines;
-                    *cursor_position.write() = (rendered.cursor.x, rendered.cursor.y as usize);
-                    *scroll_top.write() = rendered.scroll_top;
-                }
-                _ => {}
+                *lines.write() = rendered.lines;
+                *cursor_position.write() = (rendered.cursor.x, rendered.cursor.y as usize);
+                *scroll_top.write() = rendered.scroll_top;
             }
+            _ => {}
         });
     });
 

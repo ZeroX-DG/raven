@@ -4,8 +4,6 @@ pub struct TerminalConfig {
 
 impl Default for TerminalConfig {
     fn default() -> Self {
-        Self {
-            font_size: 14.
-        }
+        Self { font_size: 14. }
     }
 }

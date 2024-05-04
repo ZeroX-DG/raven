@@ -1,20 +1,20 @@
-use std::{fmt::Debug, sync::{Arc, Mutex, OnceLock}};
+use std::{
+    fmt::Debug,
+    sync::{Arc, Mutex, OnceLock},
+};
 
 use crate::pane::PaneId;
 
 static EVENTS: OnceLock<Arc<Events>> = OnceLock::new();
 
 pub struct Events {
-    subscribers: Mutex<Vec<Box<dyn FnMut(Event) + Send + Sync>>>
+    subscribers: Mutex<Vec<Box<dyn FnMut(Event) + Send + Sync>>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Event {
     PaneOutput(PaneId),
-    PaneTitle {
-        pane_id: PaneId,
-        title: String,
-    },
+    PaneTitle { pane_id: PaneId, title: String },
 }
 
 impl Debug for Events {
@@ -26,7 +26,7 @@ impl Debug for Events {
 impl Events {
     fn new() -> Self {
         Self {
-            subscribers: Mutex::new(Vec::new())
+            subscribers: Mutex::new(Vec::new()),
         }
     }
 

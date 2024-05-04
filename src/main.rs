@@ -1,22 +1,22 @@
 mod components;
+mod config;
+mod events;
+mod icons;
 mod pane;
 mod rendering;
 mod state;
-mod events;
-mod icons;
 mod utils;
-mod config;
 
+use arboard::Clipboard;
 use components::{ContentArea, Sidebar};
+use config::TerminalConfig;
+use events::{Event, Events};
 use freya::prelude::*;
 use log::LevelFilter;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use state::AppState;
-use events::{Event, Events};
-use wezterm_term::{KeyCode, KeyModifiers};
-use arboard::Clipboard;
-use config::TerminalConfig;
 use utils::get_cell_size;
+use wezterm_term::{KeyCode, KeyModifiers};
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf");
 
@@ -31,7 +31,8 @@ fn main() {
         config,
         TerminalMode::Mixed,
         ColorChoice::Auto,
-    ).ok();
+    )
+    .ok();
 
     launch_cfg(
         App,
@@ -81,7 +82,7 @@ fn App() -> Element {
     let onkeydown = move |e: KeyboardEvent| {
         focus_manager.prevent_navigation();
         let Some(pane) = active_pane.read().clone() else {
-            return
+            return;
         };
 
         let terminal = pane.terminal();

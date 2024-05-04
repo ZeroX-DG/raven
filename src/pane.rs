@@ -1,5 +1,7 @@
 use std::{
-    io::Read, sync::{Arc, Mutex}, time::{Duration, Instant}
+    io::Read,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use filedescriptor::{poll, pollfd, POLLIN};
@@ -8,9 +10,15 @@ use termwiz::escape::{
     csi::{DecPrivateMode, DecPrivateModeCode, Device, Mode},
     Action, CSI,
 };
-use wezterm_term::{color::ColorPalette, Alert, AlertHandler, CursorPosition, Terminal, TerminalConfiguration, TerminalSize};
+use wezterm_term::{
+    color::ColorPalette, Alert, AlertHandler, CursorPosition, Terminal, TerminalConfiguration,
+    TerminalSize,
+};
 
-use crate::{events::{Event, Events}, rendering::{render_terminal, LineElement}};
+use crate::{
+    events::{Event, Events},
+    rendering::{render_terminal, LineElement},
+};
 
 pub type PaneId = usize;
 static PANE_ID: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
@@ -24,7 +32,7 @@ pub struct Pane {
     terminal: Mutex<Terminal>,
     pty: Mutex<Box<dyn MasterPty + Send>>,
     title: Mutex<String>,
-    scroll_top: Mutex<usize>
+    scroll_top: Mutex<usize>,
 }
 
 impl Pane {
@@ -56,7 +64,7 @@ impl Pane {
             terminal: Mutex::new(terminal),
             pty: Mutex::new(pty.master),
             title: Mutex::new(format!("Terminal #{}", id)),
-            scroll_top: Mutex::new(0)
+            scroll_top: Mutex::new(0),
         })
     }
 
@@ -88,9 +96,7 @@ impl Pane {
     }
 
     pub fn resize(&self, terminal_size: (f32, f32), cell_size: (f32, f32), row_spacing: usize) {
-        let mut terminal = self.terminal()
-                .lock()
-                .expect("Unable to obtain terminal");
+        let mut terminal = self.terminal().lock().expect("Unable to obtain terminal");
 
         let (terminal_width, terminal_height) = terminal_size;
         let (cell_width, cell_height) = cell_size;
@@ -103,12 +109,16 @@ impl Pane {
 
         let rows = f32::max(terminal_height_with_row_spacing / cell_height, 1.) as usize;
 
-        self.pty.lock().unwrap().resize(PtySize {
-            rows: rows as u16,
-            cols: cols as u16,
-            pixel_width: terminal_width as u16,
-            pixel_height: terminal_height as u16
-        }).expect("Unable to resize pty");
+        self.pty
+            .lock()
+            .unwrap()
+            .resize(PtySize {
+                rows: rows as u16,
+                cols: cols as u16,
+                pixel_width: terminal_width as u16,
+                pixel_height: terminal_height as u16,
+            })
+            .expect("Unable to resize pty");
 
         terminal.resize(TerminalSize {
             rows,
@@ -140,15 +150,13 @@ impl Pane {
         *self.scroll_top.lock().unwrap() = new_offset as usize;
 
         std::mem::drop(terminal);
-        
+
         let events = Events::get();
         events.emit(Event::PaneOutput(self.id));
     }
 
     pub fn render(&self) -> RenderedState {
-        let terminal = self.terminal()
-            .lock()
-            .expect("Unable to obtain terminal");
+        let terminal = self.terminal().lock().expect("Unable to obtain terminal");
 
         let scroll_top = *self.scroll_top.lock().unwrap();
 
@@ -157,7 +165,7 @@ impl Pane {
         RenderedState {
             lines: rendered_lines,
             cursor: rendered_cursor_position,
-            scroll_top
+            scroll_top,
         }
     }
 }
@@ -165,7 +173,7 @@ impl Pane {
 pub struct RenderedState {
     pub lines: Vec<LineElement>,
     pub cursor: CursorPosition,
-    pub scroll_top: usize
+    pub scroll_top: usize,
 }
 
 impl PartialEq for Pane {
@@ -175,7 +183,7 @@ impl PartialEq for Pane {
 }
 
 struct NotificationHandler {
-    pane_id: PaneId
+    pane_id: PaneId,
 }
 
 impl AlertHandler for NotificationHandler {
@@ -185,7 +193,7 @@ impl AlertHandler for NotificationHandler {
             Alert::TabTitleChanged(title) => {
                 events.emit(Event::PaneTitle {
                     pane_id: self.pane_id,
-                    title: title.unwrap_or(String::new())
+                    title: title.unwrap_or(String::new()),
                 });
             }
             _ => {}
