@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use wezterm_term::TerminalSize;
 
-use crate::pane::{alloc_pane_id, read_from_pane_pty, Pane, PaneId};
+use crate::pane::{alloc_pane_id, Pane, PaneId};
 
 pub struct AppState {
     panes: Vec<Arc<Pane>>,
@@ -31,10 +31,6 @@ impl AppState {
         self.panes.clone()
     }
 
-    pub fn get_pane(&self, id: PaneId) -> Option<Arc<Pane>> {
-        self.panes.iter().find(|pane| pane.id == id).cloned()
-    }
-
     pub fn new_pane(&mut self) -> Arc<Pane> {
         let pane_id = alloc_pane_id();
 
@@ -56,11 +52,6 @@ impl AppState {
         );
 
         self.panes.push(pane.clone());
-
-        std::thread::spawn({
-            let pane = Arc::clone(&pane);
-            move || read_from_pane_pty(pane)
-        });
 
         pane
     }

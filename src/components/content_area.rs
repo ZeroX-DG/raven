@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{
-    events::{Event, Events},
-    pane::Pane,
-};
+use crate::{pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent};
 
 #[component]
 #[allow(non_snake_case)]
@@ -15,9 +12,9 @@ pub fn ContentArea(
     // Size of each cell (width, height)
     cell_size: (f32, f32),
 ) -> Element {
-    let mut lines = use_signal_sync(|| vec![]);
+    let mut current_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
     let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
-    let mut scroll_top = use_signal_sync(|| 0);
+    let mut current_scroll_top = use_signal_sync::<usize>(|| 0);
 
     let padding_top = 50.;
     let padding_right = 50.;
@@ -51,16 +48,25 @@ pub fn ContentArea(
     });
 
     use_hook(move || {
-        let events = Events::get();
-        events.subscribe(move |event| match event {
-            Event::PaneOutput(pane_id) if pane_id == pane.id => {
-                let rendered = pane.render();
+        let terminal_event_rx = pane.terminal_events();
 
-                *lines.write() = rendered.lines;
-                *cursor_position.write() = (rendered.cursor.x, rendered.cursor.y as usize);
-                *scroll_top.write() = rendered.scroll_top;
-            }
-            _ => {}
+        spawn(async move {
+            let _ = tokio::spawn(async move {
+                while let Ok(event) = terminal_event_rx.recv() {
+                    match event {
+                        TerminalEvent::Redraw {
+                            lines,
+                            cursor,
+                            scroll_top,
+                        } => {
+                            *current_lines.write() = lines;
+                            *cursor_position.write() = (cursor.x, cursor.y as usize);
+                            *current_scroll_top.write() = scroll_top;
+                        }
+                    }
+                }
+            })
+            .await;
         });
     });
 
@@ -71,7 +77,7 @@ pub fn ContentArea(
             height: "100%",
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             onwheel: onwheel,
-            for (line_index, line) in lines().iter().enumerate() {
+            for (line_index, line) in current_lines().iter().enumerate() {
                 CursorArea {
                     icon: CursorIcon::Text,
                     rect {
@@ -83,7 +89,7 @@ pub fn ContentArea(
                                 text { "{segment.text}" }
                             }
                         }
-                        if line_index == cursor_position().1 && scroll_top() == 0 {
+                        if line_index == cursor_position().1 && current_scroll_top() == 0 {
                             rect {
                                 width: "{cell_size.0}",
                                 height: "{cell_size.1}",

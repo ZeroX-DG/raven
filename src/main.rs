@@ -1,16 +1,15 @@
 mod components;
 mod config;
-mod events;
 mod icons;
 mod pane;
 mod rendering;
 mod state;
+mod terminal_loop;
 mod utils;
 
 use arboard::Clipboard;
 use components::{ContentArea, Sidebar};
 use config::TerminalConfig;
-use events::{Event, Events};
 use freya::prelude::*;
 use log::LevelFilter;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
@@ -66,26 +65,11 @@ fn App() -> Element {
         get_cell_size(font_size)
     });
 
-    use_hook(|| {
-        let events = Events::get();
-        events.subscribe(move |event| match event {
-            Event::PaneTitle { pane_id, title } => {
-                let pane = state.read().get_pane(pane_id);
-                if let Some(pane) = pane {
-                    pane.set_title(title);
-                }
-            }
-            _ => {}
-        });
-    });
-
     let onkeydown = move |e: KeyboardEvent| {
         focus_manager.prevent_navigation();
         let Some(pane) = active_pane.read().clone() else {
             return;
         };
-
-        let terminal = pane.terminal();
 
         let mods = if e.modifiers.alt() {
             KeyModifiers::ALT
@@ -111,13 +95,13 @@ fn App() -> Element {
                 if ch == "v" && meta_or_ctrl {
                     let mut clipboard = Clipboard::new().unwrap();
                     let content = clipboard.get_text().unwrap();
-                    terminal.lock().unwrap().send_paste(&content).unwrap();
+                    pane.paste(content);
                     return;
                 };
 
                 // Handle typing regular keys
-                let keycode = KeyCode::Char(ch.chars().next().unwrap());
-                terminal.lock().unwrap().key_down(keycode, mods).unwrap();
+                let key_code = KeyCode::Char(ch.chars().next().unwrap());
+                pane.key_down(key_code, mods);
             }
             key => {
                 let recognised_key = match key {
@@ -139,7 +123,7 @@ fn App() -> Element {
                 };
 
                 if let Some(key_code) = recognised_key {
-                    terminal.lock().unwrap().key_down(key_code, mods).unwrap();
+                    pane.key_down(key_code, mods);
                 }
             }
         };
