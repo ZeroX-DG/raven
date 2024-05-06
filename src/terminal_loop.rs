@@ -91,11 +91,49 @@ impl TerminalLoop {
         })
     }
 
+    fn handle_user_event(&mut self, event: UserEvent) -> anyhow::Result<()> {
+        match event {
+            UserEvent::Resize(size) => {
+                self.pty
+                    .resize(PtySize {
+                        rows: size.rows as u16,
+                        cols: size.cols as u16,
+                        pixel_width: size.pixel_width as u16,
+                        pixel_height: size.pixel_height as u16,
+                    })
+                    .unwrap();
+                self.terminal.resize(size);
+            }
+            UserEvent::Paste(content) => {
+                self.terminal.send_paste(&content)?;
+            }
+            UserEvent::Keydown(key, mods) => {
+                self.terminal.key_down(key, mods)?;
+            }
+            UserEvent::Scroll(delta_y) => {
+                let screen = self.terminal.screen();
+                let max_offset = screen.scrollback_rows() - screen.physical_rows;
+                let current_offset = self.extra_state.scroll_top as f64;
+                let mut new_offset = current_offset + delta_y * 0.2;
+
+                if new_offset < 0. {
+                    new_offset = 0.;
+                } else if new_offset as usize > max_offset {
+                    new_offset = max_offset as f64;
+                }
+
+                self.extra_state.scroll_top = new_offset as usize;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn run(mut self) -> anyhow::Result<()> {
         let pty_read_thread = PtyReadThread::new(&self.pty);
         let terminal_actions_rx = pty_read_thread.actions();
-        let user_event_rx = self.user_event_channel.1;
-        let terminal_event_tx = self.terminal_event_channel.0;
+        let user_event_rx = self.user_event_channel.1.clone();
+        let terminal_event_tx = self.terminal_event_channel.0.clone();
 
         loop {
             select! {
@@ -114,38 +152,7 @@ impl TerminalLoop {
                     let Ok(event) = event else {
                         break;
                     };
-
-                    match event {
-                        UserEvent::Resize(size) => {
-                            self.pty.resize(PtySize {
-                                rows: size.rows as u16,
-                                cols: size.cols as u16,
-                                pixel_width: size.pixel_width as u16,
-                                pixel_height: size.pixel_height as u16,
-                            }).unwrap();
-                            self.terminal.resize(size);
-                        }
-                        UserEvent::Paste(content) => {
-                            self.terminal.send_paste(&content)?;
-                        }
-                        UserEvent::Keydown(key, mods) => {
-                            self.terminal.key_down(key, mods)?;
-                        }
-                        UserEvent::Scroll(delta_y) => {
-                            let screen = self.terminal.screen();
-                            let max_offset = screen.scrollback_rows() - screen.physical_rows;
-                            let current_offset = self.extra_state.scroll_top as f64;
-                            let mut new_offset = current_offset + delta_y * 0.2;
-
-                            if new_offset < 0. {
-                                new_offset = 0.;
-                            } else if new_offset as usize > max_offset {
-                                new_offset = max_offset as f64;
-                            }
-
-                            self.extra_state.scroll_top = new_offset as usize;
-                        }
-                    }
+                    self.handle_user_event(event)?;
                 }
             }
         }
