@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use freya::prelude::*;
 
-use crate::{pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent};
+use crate::{
+    hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
+};
 
 #[component]
 #[allow(non_snake_case)]
@@ -12,9 +14,10 @@ pub fn ContentArea(
     // Size of each cell (width, height)
     cell_size: (f32, f32),
 ) -> Element {
-    let mut current_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
-    let mut cursor_position = use_signal_sync::<(usize, usize)>(|| (0, 0));
-    let mut current_scroll_top = use_signal_sync::<usize>(|| 0);
+    let mut rendered_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
+    let mut rendered_cursor = use_signal_sync::<(usize, usize)>(|| (0, 0));
+    let mut rendered_scroll_top = use_signal_sync::<usize>(|| 0);
+    let terminal = use_terminal(pane.clone());
 
     let padding_top = 50.;
     let padding_right = 50.;
@@ -32,42 +35,44 @@ pub fn ContentArea(
     });
 
     let onwheel = {
-        let pane = pane.clone();
+        let terminal = terminal.clone();
         move |e: WheelEvent| {
             let delta_y = e.data.get_delta_y();
-            pane.scroll(delta_y);
+            terminal.scroll(delta_y);
         }
     };
 
     use_memo({
-        let pane = pane.clone();
+        let terminal = terminal.clone();
         move || {
             let terminal_size = terminal_size();
-            pane.resize(terminal_size, cell_size, line_spacing);
+            terminal.resize(terminal_size, cell_size, line_spacing);
         }
     });
 
-    use_hook(move || {
-        let terminal_event_rx = pane.terminal_events();
-
-        spawn(async move {
-            let _ = tokio::spawn(async move {
-                while let Ok(event) = terminal_event_rx.recv() {
-                    match event {
-                        TerminalEvent::Redraw {
-                            lines,
-                            cursor,
-                            scroll_top,
-                        } => {
-                            *current_lines.write() = lines;
-                            *cursor_position.write() = (cursor.x, cursor.y as usize);
-                            *current_scroll_top.write() = scroll_top;
+    use_hook({
+        let pane = pane.clone();
+        move || {
+            let terminal_event_rx = pane.terminal_events();
+            spawn(async move {
+                let _ = tokio::spawn(async move {
+                    while let Ok(event) = terminal_event_rx.recv() {
+                        match event {
+                            TerminalEvent::Redraw {
+                                lines,
+                                cursor,
+                                scroll_top,
+                            } => {
+                                *rendered_lines.write() = lines;
+                                *rendered_cursor.write() = (cursor.x, cursor.y as usize);
+                                *rendered_scroll_top.write() = scroll_top;
+                            }
                         }
                     }
-                }
-            })
-            .await;
-        });
+                })
+                .await;
+            });
+        }
     });
 
     rsx!(
@@ -77,7 +82,7 @@ pub fn ContentArea(
             height: "100%",
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             onwheel: onwheel,
-            for (line_index, line) in current_lines().iter().enumerate() {
+            for (line_index, line) in rendered_lines().iter().enumerate() {
                 CursorArea {
                     icon: CursorIcon::Text,
                     rect {
@@ -89,7 +94,7 @@ pub fn ContentArea(
                                 text { "{segment.text}" }
                             }
                         }
-                        if line_index == cursor_position().1 && current_scroll_top() == 0 {
+                        if line_index == rendered_cursor().1 && rendered_scroll_top() == 0 {
                             rect {
                                 width: "{cell_size.0}",
                                 height: "{cell_size.1}",
@@ -98,11 +103,11 @@ pub fn ContentArea(
                                 layer: "-10",
                                 position: "absolute",
                                 position_top: "0",
-                                position_left: "{cell_size.0 * cursor_position().0 as f32}",
+                                position_left: "{cell_size.0 * rendered_cursor().0 as f32}",
 
                                 rect {
                                     label {
-                                        "{line.cell_content(cursor_position().0)}"
+                                        "{line.cell_content(rendered_cursor().0)}"
                                     }
                                 }
                             }

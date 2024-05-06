@@ -1,5 +1,6 @@
 mod components;
 mod config;
+mod hooks;
 mod icons;
 mod pane;
 mod rendering;
@@ -11,6 +12,7 @@ use arboard::Clipboard;
 use components::{ContentArea, Sidebar};
 use config::TerminalConfig;
 use freya::prelude::*;
+use hooks::use_terminal;
 use log::LevelFilter;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use state::AppState;
@@ -71,6 +73,8 @@ fn App() -> Element {
             return;
         };
 
+        let terminal = use_terminal(pane);
+
         let mods = if e.modifiers.alt() {
             KeyModifiers::ALT
         } else if e.modifiers.shift() {
@@ -95,13 +99,13 @@ fn App() -> Element {
                 if ch == "v" && meta_or_ctrl {
                     let mut clipboard = Clipboard::new().unwrap();
                     let content = clipboard.get_text().unwrap();
-                    pane.paste(content);
+                    terminal.paste(content);
                     return;
                 };
 
                 // Handle typing regular keys
                 let key_code = KeyCode::Char(ch.chars().next().unwrap());
-                pane.key_down(key_code, mods);
+                terminal.key_down(key_code, mods);
             }
             key => {
                 let recognised_key = match key {
@@ -123,7 +127,7 @@ fn App() -> Element {
                 };
 
                 if let Some(key_code) = recognised_key {
-                    pane.key_down(key_code, mods);
+                    terminal.key_down(key_code, mods);
                 }
             }
         };
