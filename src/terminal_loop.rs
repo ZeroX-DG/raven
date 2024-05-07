@@ -40,6 +40,7 @@ pub enum TerminalEvent {
         cursor: CursorPosition,
         scroll_top: usize,
     },
+    Exit,
 }
 
 pub enum UserEvent {
@@ -142,6 +143,7 @@ impl TerminalLoop {
             select! {
                 recv(terminal_actions_rx) -> actions => {
                     let Ok(actions) = actions else {
+                        terminal_event_tx.send(TerminalEvent::Exit)?;
                         break;
                     };
                     self.terminal.perform_actions(actions);

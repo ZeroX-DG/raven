@@ -72,6 +72,10 @@ pub fn ContentArea(
                                 *rendered_cursor.write() = (cursor.x, cursor.y as usize);
                                 *rendered_scroll_top.write() = scroll_top;
                             }
+                            TerminalEvent::Exit => {
+                                pane.close();
+                                break;
+                            }
                         }
                     }
                 })

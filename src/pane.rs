@@ -44,4 +44,9 @@ impl Pane {
     pub fn user_event_sender(&self) -> Sender<UserEvent> {
         self.terminal_channel.0.clone()
     }
+
+    pub fn close(&self) {
+        // TODO: Handle exiting in the main app state
+        std::process::exit(0);
+    }
 }
