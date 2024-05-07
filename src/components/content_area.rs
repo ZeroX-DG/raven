@@ -21,7 +21,7 @@ pub fn ContentArea(
 
     let padding_top = 50.;
     let padding_right = 50.;
-    let padding_bottom = 50.;
+    let padding_bottom = 40.;
     let padding_left = 100.;
     let line_spacing: u16 = 2;
 
@@ -30,7 +30,12 @@ pub fn ContentArea(
     let terminal_size = use_memo(move || {
         let size = size.read();
         let width = f32::max(size.area.width() - (padding_left + padding_right), 0.);
-        let height = f32::max(size.area.height() - (padding_top + padding_bottom), 0.);
+        let height = f32::max(
+            size.area.height()
+                - (padding_top + padding_bottom)
+                - (line_spacing as f32 * rendered_lines().len() as f32),
+            0.,
+        );
         (width, height)
     });
 
@@ -107,28 +112,47 @@ fn Line(
         CursorArea {
             icon: CursorIcon::Text,
             rect {
-                padding: "{line_spacing} 0",
                 onmousedown: |e| e.stop_propagation(),
-                paragraph {
-                    max_lines: "1",
-                    for segment in line.clusters() {
-                        text { "{segment.text}" }
-                    }
-                }
-                if let Some(cursor_index) = cursor {
+                height: "{cell_size.1 + (2. * line_spacing as f32)}",
+                for segment in line.clusters() {
                     rect {
-                        width: "{cell_size.0}",
-                        height: "{cell_size.1}",
-                        color: "rgb(17, 21, 28)",
-                        background: "rgb(165, 172, 186)",
-                        layer: "-10",
+                        background: segment.background(),
+                        width: "{cell_size.0 * segment.width() as f32 + 0.5}",
+                        height: "{cell_size.1 + (2. * line_spacing as f32)}",
+                        layer: "2",
                         position: "absolute",
                         position_top: "0",
-                        position_left: "{cell_size.0 * cursor_index as f32}",
-
+                        position_left: "{cell_size.0 * segment.start_index() as f32}",
+                    }
+                }
+                rect {
+                    padding: "{line_spacing} 0",
+                    paragraph {
+                        max_lines: "1",
+                        layer: "1",
+                        for segment in line.clusters() {
+                            text {
+                                color: segment.foreground(),
+                                font_weight: "{segment.intensity()}",
+                                "{segment.text()}"
+                            }
+                        }
+                    }
+                    if let Some(cursor_index) = cursor {
                         rect {
-                            label {
-                                "{line.cell_content(cursor_index)}"
+                            width: "{cell_size.0}",
+                            height: "{cell_size.1}",
+                            color: "rgb(17, 21, 28)",
+                            background: "rgb(165, 172, 186)",
+                            layer: "-10",
+                            position: "absolute",
+                            position_top: "0",
+                            position_left: "{cell_size.0 * cursor_index as f32}",
+
+                            rect {
+                                label {
+                                    "{line.cell_content(cursor_index)}"
+                                }
                             }
                         }
                     }
