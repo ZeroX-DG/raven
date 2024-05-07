@@ -4,11 +4,8 @@ use std::{
 };
 
 use config::{Palette, RgbaColor};
-use crossbeam::{
-    channel::{unbounded, Receiver, Sender},
-    select,
-};
 use filedescriptor::{poll, pollfd, POLLIN};
+use flume::{unbounded, Receiver, Selector, Sender};
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use termwiz::escape::{
     csi::{DecPrivateMode, DecPrivateModeCode, Device, Mode},
@@ -48,6 +45,11 @@ pub enum UserEvent {
     Paste(String),
     Keydown(KeyCode, KeyModifiers),
     Scroll(f64),
+}
+
+enum TerminalLoopData {
+    UserEvent(UserEvent),
+    PtyActions(Vec<Action>),
 }
 
 pub struct TerminalExtraState {
@@ -140,23 +142,33 @@ impl TerminalLoop {
         let terminal_event_tx = self.terminal_event_channel.0.clone();
 
         loop {
-            select! {
-                recv(terminal_actions_rx) -> actions => {
-                    let Ok(actions) = actions else {
-                        terminal_event_tx.send(TerminalEvent::Exit)?;
-                        break;
-                    };
-                    self.terminal.perform_actions(actions);
+            let data = Selector::new()
+                .recv(&terminal_actions_rx, |maybe_actions| {
+                    maybe_actions.map(|actions| TerminalLoopData::PtyActions(actions))
+                })
+                .recv(&user_event_rx, |maybe_event| {
+                    maybe_event.map(|event| TerminalLoopData::UserEvent(event))
+                })
+                .wait();
 
+            let Ok(data) = data else {
+                terminal_event_tx.send(TerminalEvent::Exit)?;
+                break;
+            };
+
+            match data {
+                TerminalLoopData::PtyActions(actions) => {
+                    self.terminal.perform_actions(actions);
                     let scroll_top = self.extra_state.scroll_top;
 
                     let (lines, cursor) = render_terminal(&self.terminal, scroll_top);
-                    terminal_event_tx.send(TerminalEvent::Redraw { lines, cursor, scroll_top })?;
+                    terminal_event_tx.send(TerminalEvent::Redraw {
+                        lines,
+                        cursor,
+                        scroll_top,
+                    })?;
                 }
-                recv(user_event_rx) -> event => {
-                    let Ok(event) = event else {
-                        break;
-                    };
+                TerminalLoopData::UserEvent(event) => {
                     self.handle_user_event(event)?;
                 }
             }

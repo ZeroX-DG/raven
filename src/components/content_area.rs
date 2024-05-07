@@ -60,26 +60,23 @@ pub fn ContentArea(
         move || {
             let terminal_event_rx = pane.terminal_events();
             spawn(async move {
-                let _ = tokio::spawn(async move {
-                    while let Ok(event) = terminal_event_rx.recv() {
-                        match event {
-                            TerminalEvent::Redraw {
-                                lines,
-                                cursor,
-                                scroll_top,
-                            } => {
-                                *rendered_lines.write() = lines;
-                                *rendered_cursor.write() = (cursor.x, cursor.y as usize);
-                                *rendered_scroll_top.write() = scroll_top;
-                            }
-                            TerminalEvent::Exit => {
-                                pane.close();
-                                break;
-                            }
+                while let Ok(event) = terminal_event_rx.recv_async().await {
+                    match event {
+                        TerminalEvent::Redraw {
+                            lines,
+                            cursor,
+                            scroll_top,
+                        } => {
+                            *rendered_lines.write() = lines;
+                            *rendered_cursor.write() = (cursor.x, cursor.y as usize);
+                            *rendered_scroll_top.write() = scroll_top;
+                        }
+                        TerminalEvent::Exit => {
+                            pane.close();
+                            break;
                         }
                     }
-                })
-                .await;
+                }
             });
         }
     });

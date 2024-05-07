@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crossbeam::channel::{Receiver, Sender};
+use flume::{Receiver, Sender};
 use wezterm_term::TerminalSize;
 
 use crate::terminal_loop::{create_terminal, TerminalEvent, UserEvent};
