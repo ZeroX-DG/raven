@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use config::{Palette, RgbaColor};
 use crossbeam::{
     channel::{unbounded, Receiver, Sender},
     select,
@@ -300,6 +301,36 @@ impl TerminalConfiguration for TermConfig {
     }
 
     fn color_palette(&self) -> ColorPalette {
-        ColorPalette::default()
+        ColorPalette::from(Palette {
+            foreground: Some(RgbaColor::try_from("#cbccc6".to_string()).unwrap()),
+            // Modified to match with app background
+            background: Some(RgbaColor::try_from("rgb(17, 21, 28)".to_string()).unwrap()),
+            cursor_fg: Some(RgbaColor::try_from("#1f2430".to_string()).unwrap()),
+            cursor_bg: Some(RgbaColor::try_from("#ffcc66".to_string()).unwrap()),
+            cursor_border: Some(RgbaColor::try_from("#ffcc66".to_string()).unwrap()),
+            selection_fg: Some(RgbaColor::try_from("#cbccc6".to_string()).unwrap()),
+            selection_bg: Some(RgbaColor::try_from("#33415e".to_string()).unwrap()),
+            ansi: Some([
+                RgbaColor::try_from("#191e2a".to_string()).unwrap(),
+                RgbaColor::try_from("#ed8274".to_string()).unwrap(),
+                RgbaColor::try_from("#a6cc70".to_string()).unwrap(),
+                RgbaColor::try_from("#fad07b".to_string()).unwrap(),
+                RgbaColor::try_from("#6dcbfa".to_string()).unwrap(),
+                RgbaColor::try_from("#cfbafa".to_string()).unwrap(),
+                RgbaColor::try_from("#90e1c6".to_string()).unwrap(),
+                RgbaColor::try_from("#c7c7c7".to_string()).unwrap(),
+            ]),
+            brights: Some([
+                RgbaColor::try_from("#686868".to_string()).unwrap(),
+                RgbaColor::try_from("#f28779".to_string()).unwrap(),
+                RgbaColor::try_from("#bae67e".to_string()).unwrap(),
+                RgbaColor::try_from("#ffd580".to_string()).unwrap(),
+                RgbaColor::try_from("#73d0ff".to_string()).unwrap(),
+                RgbaColor::try_from("#d4bfff".to_string()).unwrap(),
+                RgbaColor::try_from("#95e6cb".to_string()).unwrap(),
+                RgbaColor::try_from("#ffffff".to_string()).unwrap(),
+            ]),
+            ..Default::default()
+        })
     }
 }
