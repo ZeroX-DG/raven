@@ -11,7 +11,7 @@ impl LineElement {
     pub fn clusters(&self) -> Vec<LineSegment> {
         let mut line = self.0.clone();
         let seq_no = line.current_seqno();
-        let remaining_space = self.2 - line.len();
+        let remaining_space = usize::max(self.2, line.len()) - line.len();
         let empty_space_line = Line::with_width(remaining_space, seq_no);
         line.append_line(empty_space_line, seq_no);
 
