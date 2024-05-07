@@ -20,6 +20,12 @@ impl LineElement {
     }
 }
 
+impl PartialEq for LineElement {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_str() == other.0.as_str()
+    }
+}
+
 pub fn render_terminal(
     terminal: &Terminal,
     scroll_top: usize,

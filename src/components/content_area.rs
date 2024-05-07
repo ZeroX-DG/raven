@@ -23,7 +23,7 @@ pub fn ContentArea(
     let padding_right = 50.;
     let padding_bottom = 50.;
     let padding_left = 100.;
-    let line_spacing = 2;
+    let line_spacing: u16 = 2;
 
     let (node_ref, size) = use_node_signal();
 
@@ -83,33 +83,52 @@ pub fn ContentArea(
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             onwheel: onwheel,
             for (line_index, line) in rendered_lines().iter().enumerate() {
-                CursorArea {
-                    icon: CursorIcon::Text,
-                    rect {
-                        padding: "{line_spacing} 0",
-                        onmousedown: |e| e.stop_propagation(),
-                        paragraph {
-                            max_lines: "1",
-                            for segment in line.clusters() {
-                                text { "{segment.text}" }
-                            }
-                        }
-                        if line_index == rendered_cursor().1 && rendered_scroll_top() == 0 {
-                            rect {
-                                width: "{cell_size.0}",
-                                height: "{cell_size.1}",
-                                color: "rgb(17, 21, 28)",
-                                background: "rgb(165, 172, 186)",
-                                layer: "-10",
-                                position: "absolute",
-                                position_top: "0",
-                                position_left: "{cell_size.0 * rendered_cursor().0 as f32}",
+                Line {
+                    key: "{line_index}",
+                    line: line.clone(),
+                    line_spacing: line_spacing,
+                    cursor: (line_index == rendered_cursor().1 && rendered_scroll_top() == 0).then(|| rendered_cursor().0),
+                    cell_size: cell_size,
+                }
+            }
+        }
+    )
+}
 
-                                rect {
-                                    label {
-                                        "{line.cell_content(rendered_cursor().0)}"
-                                    }
-                                }
+#[component]
+#[allow(non_snake_case)]
+fn Line(
+    line: LineElement,
+    line_spacing: u16,
+    cursor: Option<usize>,
+    cell_size: (f32, f32),
+) -> Element {
+    rsx!(
+        CursorArea {
+            icon: CursorIcon::Text,
+            rect {
+                padding: "{line_spacing} 0",
+                onmousedown: |e| e.stop_propagation(),
+                paragraph {
+                    max_lines: "1",
+                    for segment in line.clusters() {
+                        text { "{segment.text}" }
+                    }
+                }
+                if let Some(cursor_index) = cursor {
+                    rect {
+                        width: "{cell_size.0}",
+                        height: "{cell_size.1}",
+                        color: "rgb(17, 21, 28)",
+                        background: "rgb(165, 172, 186)",
+                        layer: "-10",
+                        position: "absolute",
+                        position_top: "0",
+                        position_left: "{cell_size.0 * cursor_index as f32}",
+
+                        rect {
+                            label {
+                                "{line.cell_content(cursor_index)}"
                             }
                         }
                     }

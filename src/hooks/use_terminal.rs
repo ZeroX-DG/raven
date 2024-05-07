@@ -19,14 +19,14 @@ impl UseTerminal {
         self.send_event(UserEvent::Keydown(key, mods));
     }
 
-    pub fn resize(&self, terminal_size: (f32, f32), cell_size: (f32, f32), row_spacing: usize) {
+    pub fn resize(&self, terminal_size: (f32, f32), cell_size: (f32, f32), row_spacing: u16) {
         let (terminal_width, terminal_height) = terminal_size;
         let (cell_width, cell_height) = cell_size;
 
         let cols = f32::max(terminal_width / cell_width, 1.) as usize;
         let rows = f32::max(terminal_height / cell_height, 1.) as usize;
 
-        let total_row_spacing = row_spacing * rows;
+        let total_row_spacing = row_spacing as usize * rows;
         let terminal_height_with_row_spacing = terminal_height - total_row_spacing as f32;
 
         let rows = f32::max(terminal_height_with_row_spacing / cell_height, 1.) as usize;
