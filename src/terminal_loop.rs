@@ -73,7 +73,9 @@ impl TerminalLoop {
 
         let shell = std::env::var("SHELL").unwrap_or(String::from("bash"));
 
-        let cmd = CommandBuilder::new(shell);
+        let mut cmd = CommandBuilder::new(shell);
+        cmd.env("TERM_PROGRAM", "Raven");
+
         pty.slave.spawn_command(cmd)?;
         let terminal = Terminal::new(
             size,
