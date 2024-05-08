@@ -4182,6 +4182,7 @@ dependencies = [
  "simplelog",
  "skia-safe",
  "termwiz",
+ "tokio",
  "wezterm-term",
 ]
 

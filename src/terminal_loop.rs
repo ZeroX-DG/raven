@@ -5,12 +5,12 @@ use std::{
 
 use config::{Palette, RgbaColor};
 use filedescriptor::{poll, pollfd, POLLIN};
-use flume::{unbounded, Receiver, Selector, Sender};
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use termwiz::escape::{
     csi::{DecPrivateMode, DecPrivateModeCode, Device, Mode},
     Action, CSI,
 };
+use tokio::sync::broadcast::{channel, Receiver, Sender};
 use wezterm_term::{
     color::ColorPalette, CursorPosition, KeyCode, KeyModifiers, Terminal, TerminalConfiguration,
     TerminalSize,
@@ -18,19 +18,42 @@ use wezterm_term::{
 
 use crate::rendering::{render_terminal, LineElement};
 
-pub fn create_terminal(
-    size: TerminalSize,
-) -> anyhow::Result<(Sender<UserEvent>, Receiver<TerminalEvent>)> {
+pub fn create_terminal(size: TerminalSize) -> anyhow::Result<TerminalBridge> {
     let terminal_loop = TerminalLoop::new(size)?;
 
-    let user_event_tx = terminal_loop.user_event_channel.0.clone();
-    let terminal_event_rx = terminal_loop.terminal_event_channel.1.clone();
+    let user_event_channel = (
+        terminal_loop.user_event_channel.0.clone(),
+        terminal_loop.user_event_channel.0.subscribe(),
+    );
+    let terminal_event_channel = (
+        terminal_loop.terminal_event_channel.0.clone(),
+        terminal_loop.terminal_event_channel.0.subscribe(),
+    );
 
-    std::thread::spawn(|| terminal_loop.run());
+    tokio::spawn(terminal_loop.run());
 
-    Ok((user_event_tx, terminal_event_rx))
+    Ok(TerminalBridge {
+        user_event_channel,
+        terminal_event_channel,
+    })
 }
 
+pub struct TerminalBridge {
+    user_event_channel: (Sender<UserEvent>, Receiver<UserEvent>),
+    terminal_event_channel: (Sender<TerminalEvent>, Receiver<TerminalEvent>),
+}
+
+impl TerminalBridge {
+    pub fn user_event_sender(&self) -> &Sender<UserEvent> {
+        &self.user_event_channel.0
+    }
+
+    pub fn terminal_event_receiver(&self) -> Receiver<TerminalEvent> {
+        self.terminal_event_channel.0.subscribe()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum TerminalEvent {
     Redraw {
         lines: Vec<LineElement>,
@@ -40,6 +63,7 @@ pub enum TerminalEvent {
     Exit,
 }
 
+#[derive(Debug, Clone)]
 pub enum UserEvent {
     Resize(TerminalSize),
     Paste(String),
@@ -91,8 +115,8 @@ impl TerminalLoop {
         Ok(Self {
             terminal,
             pty: pty.master,
-            user_event_channel: unbounded(),
-            terminal_event_channel: unbounded(),
+            user_event_channel: channel(10),
+            terminal_event_channel: channel(10),
             extra_state: TerminalExtraState { scroll_top: 0 },
         })
     }
@@ -135,29 +159,19 @@ impl TerminalLoop {
         Ok(())
     }
 
-    pub fn run(mut self) -> anyhow::Result<()> {
+    pub async fn run(mut self) -> anyhow::Result<()> {
         let pty_read_thread = PtyReadThread::new(&self.pty);
-        let terminal_actions_rx = pty_read_thread.actions();
-        let user_event_rx = self.user_event_channel.1.clone();
+        let mut terminal_actions_rx = pty_read_thread.actions();
+        let mut user_event_rx = self.user_event_channel.0.subscribe();
         let terminal_event_tx = self.terminal_event_channel.0.clone();
 
         loop {
-            let data = Selector::new()
-                .recv(&terminal_actions_rx, |maybe_actions| {
-                    maybe_actions.map(|actions| TerminalLoopData::PtyActions(actions))
-                })
-                .recv(&user_event_rx, |maybe_event| {
-                    maybe_event.map(|event| TerminalLoopData::UserEvent(event))
-                })
-                .wait();
-
-            let Ok(data) = data else {
-                terminal_event_tx.send(TerminalEvent::Exit)?;
-                break;
-            };
-
-            match data {
-                TerminalLoopData::PtyActions(actions) => {
+            tokio::select! {
+                actions = terminal_actions_rx.recv() => {
+                    let Ok(actions) = actions else {
+                        terminal_event_tx.send(TerminalEvent::Exit)?;
+                        break;
+                    };
                     self.terminal.perform_actions(actions);
                     let scroll_top = self.extra_state.scroll_top;
 
@@ -168,11 +182,47 @@ impl TerminalLoop {
                         scroll_top,
                     })?;
                 }
-                TerminalLoopData::UserEvent(event) => {
+                event = user_event_rx.recv() => {
+                    let Ok(event) = event else {
+                        break;
+                    };
                     self.handle_user_event(event)?;
                 }
             }
         }
+
+        // loop {
+        //     let data = Selector::new()
+        //         .recv(&terminal_actions_rx, |maybe_actions| {
+        //             maybe_actions.map(|actions| TerminalLoopData::PtyActions(actions))
+        //         })
+        //         .recv(&user_event_rx, |maybe_event| {
+        //             maybe_event.map(|event| TerminalLoopData::UserEvent(event))
+        //         })
+        //         .wait();
+
+        //     let Ok(data) = data else {
+        //         terminal_event_tx.send(TerminalEvent::Exit)?;
+        //         break;
+        //     };
+
+        //     match data {
+        //         TerminalLoopData::PtyActions(actions) => {
+        //             self.terminal.perform_actions(actions);
+        //             let scroll_top = self.extra_state.scroll_top;
+
+        //             let (lines, cursor) = render_terminal(&self.terminal, scroll_top);
+        //             terminal_event_tx.send(TerminalEvent::Redraw {
+        //                 lines,
+        //                 cursor,
+        //                 scroll_top,
+        //             })?;
+        //         }
+        //         TerminalLoopData::UserEvent(event) => {
+        //             self.handle_user_event(event)?;
+        //         }
+        //     }
+        // }
 
         pty_read_thread.close();
         Ok(())
@@ -181,14 +231,15 @@ impl TerminalLoop {
 
 struct PtyReadThread {
     thread: std::thread::JoinHandle<()>,
-    actions_rx: Receiver<Vec<Action>>,
+    actions_channel: (Sender<Vec<Action>>, Receiver<Vec<Action>>),
 }
 
 impl PtyReadThread {
     pub fn new(pty: &Box<dyn MasterPty + Send>) -> Self {
         let mut reader = pty.try_clone_reader().unwrap();
         let pty_raw_fd = pty.as_raw_fd().unwrap();
-        let (tx, rx) = unbounded();
+        let (tx, rx) = channel(1);
+        let (c_tx, c_rx) = (tx.clone(), tx.subscribe());
 
         let thread = std::thread::spawn(move || {
             let delay = Duration::from_millis(3);
@@ -287,12 +338,12 @@ impl PtyReadThread {
 
         Self {
             thread,
-            actions_rx: rx,
+            actions_channel: (c_tx, c_rx),
         }
     }
 
-    pub fn actions(&self) -> &Receiver<Vec<Action>> {
-        &self.actions_rx
+    pub fn actions(&self) -> Receiver<Vec<Action>> {
+        self.actions_channel.0.subscribe()
     }
 
     pub fn close(self) {
