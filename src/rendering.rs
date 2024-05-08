@@ -1,4 +1,4 @@
-use termwiz::{cellcluster::CellCluster, color::SrgbaTuple};
+use termwiz::cellcluster::CellCluster;
 use wezterm_term::{color::ColorPalette, CellRef, CursorPosition, Line, Terminal};
 
 #[derive(Clone, Debug)]
@@ -33,11 +33,11 @@ impl LineElement {
 }
 
 impl LineSegment {
-    pub fn intensity(&self) -> &'static str {
+    pub fn is_bold(&self) -> bool {
         match self.0.attrs.intensity() {
-            wezterm_term::Intensity::Bold => "bold",
-            wezterm_term::Intensity::Half => "semi-bold",
-            _ => "normal",
+            wezterm_term::Intensity::Bold => true,
+            wezterm_term::Intensity::Half => true,
+            _ => false,
         }
     }
 
@@ -57,10 +57,6 @@ impl LineSegment {
 
     pub fn text(&self) -> String {
         self.0.text.clone()
-    }
-
-    pub fn start_index(&self) -> usize {
-        self.0.first_cell_idx
     }
 }
 

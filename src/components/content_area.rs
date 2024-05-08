@@ -80,23 +80,45 @@ pub fn ContentArea(
 
     let canvas = use_canvas(
         (&*rendered_lines.read(), &*rendered_cursor.read()),
-        move |(lines, _cursor)| {
+        move |(lines, cursor)| {
             Box::new(move |canvas, font_collection, region| {
+                if lines.len() == 0 {
+                    return;
+                }
+
                 canvas.translate((region.min_x(), region.min_y()));
                 canvas.scale((2., 2.));
 
-                let typefaces =
+                let normal_typeface =
                     font_collection.find_typefaces(&["jetbrains mono"], FontStyle::default());
-                let font = Font::new(
-                    typefaces.first().expect("JetBrains Mono Font not found"),
+
+                let bold_typeface =
+                    font_collection.find_typefaces(&["jetbrains mono"], FontStyle::bold());
+
+                let normal_font = Font::new(
+                    normal_typeface
+                        .first()
+                        .expect("JetBrains Mono Font not found"),
                     font_size,
                 );
 
-                let draw_text = |content: &str, x: f32, y: f32, color: Color| {
+                let bold_font = Font::new(
+                    bold_typeface
+                        .first()
+                        .expect("JetBrains Mono Font not found"),
+                    font_size,
+                );
+
+                let draw_text = |content: &str, x: f32, y: f32, color: Color, bold: bool| {
                     let mut paint = Paint::default();
                     paint.set_anti_alias(true);
                     paint.set_color(color);
-                    canvas.draw_str(content, (x, y + cell_size.1), &font, &paint)
+                    canvas.draw_str(
+                        content,
+                        (x, y + cell_size.1),
+                        if bold { &bold_font } else { &normal_font },
+                        &paint,
+                    )
                 };
 
                 let draw_rect = |x: f32, y: f32, width: f32, height: f32, color: Color| {
@@ -109,7 +131,13 @@ pub fn ContentArea(
                 let mut x = 0.;
                 let mut y = line_spacing;
 
-                for line in &lines {
+                let mut cursor_y = y + line_spacing;
+
+                for (line_index, line) in lines.iter().enumerate() {
+                    if line_index == cursor.1 {
+                        cursor_y = y;
+                    }
+
                     for cluster in line.clusters() {
                         let background = cluster.background();
                         let background = Color::from_rgb(background.0, background.1, background.2);
@@ -127,12 +155,28 @@ pub fn ContentArea(
                         let foreground = cluster.foreground();
                         let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
 
-                        draw_text(&cluster.text(), x, y, foreground);
+                        draw_text(&cluster.text(), x, y, foreground, cluster.is_bold());
                         x += cell_size.0 * cluster.width() as f32;
                     }
                     x = 0.;
                     y += cell_size.1 + line_spacing;
                 }
+
+                // draw the cursor at the end so it sits on top everything
+                draw_rect(
+                    cursor.0 as f32 * cell_size.0,
+                    cursor_y + line_spacing * 2.,
+                    cell_size.0,
+                    cell_size.1,
+                    Color::WHITE,
+                );
+                draw_text(
+                    &lines.get(cursor.1).unwrap().cell_content(cursor.0),
+                    cursor.0 as f32 * cell_size.0,
+                    cursor_y,
+                    Color::BLACK,
+                    false,
+                );
             })
         },
     );
