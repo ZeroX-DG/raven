@@ -154,7 +154,8 @@ fn App() -> Element {
                     if let Some(pane) = active_pane() {
                         ContentArea {
                             pane: pane,
-                            cell_size: cell_size()
+                            cell_size: cell_size(),
+                            font_size: config.read().font_size,
                         }
                     }
                 }

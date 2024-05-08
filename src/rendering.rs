@@ -41,14 +41,14 @@ impl LineSegment {
         }
     }
 
-    pub fn foreground(&self) -> String {
+    pub fn foreground(&self) -> (u8, u8, u8, u8) {
         let foreground = self.1.resolve_fg(self.0.attrs.foreground());
-        srgba_tuple_to_rgba(foreground)
+        foreground.as_rgba_u8()
     }
 
-    pub fn background(&self) -> String {
+    pub fn background(&self) -> (u8, u8, u8, u8) {
         let background = self.1.resolve_bg(self.0.attrs.background());
-        srgba_tuple_to_rgba(background)
+        background.as_rgba_u8()
     }
 
     pub fn width(&self) -> usize {
@@ -62,16 +62,6 @@ impl LineSegment {
     pub fn start_index(&self) -> usize {
         self.0.first_cell_idx
     }
-}
-
-fn srgba_tuple_to_rgba(color: SrgbaTuple) -> String {
-    format!(
-        "rgb({}, {}, {}, {})",
-        color.0 * 255.,
-        color.1 * 255.,
-        color.2 * 255.,
-        color.3 * 255.,
-    )
 }
 
 impl PartialEq for LineElement {

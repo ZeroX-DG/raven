@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use freya::prelude::*;
+use skia_safe::{Color, Font, FontStyle, Paint};
 
 use crate::{
     hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
@@ -13,6 +14,8 @@ pub fn ContentArea(
     pane: Arc<Pane>,
     // Size of each cell (width, height)
     cell_size: (f32, f32),
+    // Size of the font
+    font_size: f32,
 ) -> Element {
     let mut rendered_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
     let mut rendered_cursor = use_signal_sync::<(usize, usize)>(|| (0, 0));
@@ -23,19 +26,14 @@ pub fn ContentArea(
     let padding_right = 50.;
     let padding_bottom = 40.;
     let padding_left = 100.;
-    let line_spacing: u16 = 2;
+    let line_spacing = 2.;
 
     let (node_ref, size) = use_node_signal();
 
     let terminal_size = use_memo(move || {
         let size = size.read();
-        let width = f32::max(size.area.width() - (padding_left + padding_right), 0.);
-        let height = f32::max(
-            size.area.height()
-                - (padding_top + padding_bottom)
-                - (line_spacing as f32 * rendered_lines().len() as f32),
-            0.,
-        );
+        let width = f32::max(size.area.width(), 0.);
+        let height = f32::max(size.area.height(), 0.);
         (width, height)
     });
 
@@ -56,9 +54,8 @@ pub fn ContentArea(
     });
 
     use_hook({
-        let pane = pane.clone();
+        let terminal_event_rx = pane.terminal_bridge().terminal_event_receiver().clone();
         move || {
-            let terminal_event_rx = pane.terminal_bridge().terminal_event_receiver().clone();
             spawn(async move {
                 while let Ok(event) = terminal_event_rx.recv_async().await {
                     match event {
@@ -81,82 +78,82 @@ pub fn ContentArea(
         }
     });
 
+    let canvas = use_canvas(
+        (&*rendered_lines.read(), &*rendered_cursor.read()),
+        move |(lines, _cursor)| {
+            Box::new(move |canvas, font_collection, region| {
+                canvas.translate((region.min_x(), region.min_y()));
+                canvas.scale((2., 2.));
+
+                let typefaces =
+                    font_collection.find_typefaces(&["jetbrains mono"], FontStyle::default());
+                let font = Font::new(
+                    typefaces.first().expect("JetBrains Mono Font not found"),
+                    font_size,
+                );
+
+                let draw_text = |content: &str, x: f32, y: f32, color: Color| {
+                    let mut paint = Paint::default();
+                    paint.set_anti_alias(true);
+                    paint.set_color(color);
+                    canvas.draw_str(content, (x, y + cell_size.1), &font, &paint)
+                };
+
+                let draw_rect = |x: f32, y: f32, width: f32, height: f32, color: Color| {
+                    let mut paint = Paint::default();
+                    paint.set_anti_alias(true);
+                    paint.set_color(color);
+                    canvas.draw_rect(skia_safe::Rect::from_xywh(x, y, width, height), &paint);
+                };
+
+                let mut x = 0.;
+                let mut y = line_spacing;
+
+                for line in &lines {
+                    for cluster in line.clusters() {
+                        let background = cluster.background();
+                        let background = Color::from_rgb(background.0, background.1, background.2);
+                        draw_rect(
+                            x,
+                            y + line_spacing,
+                            cell_size.0 * cluster.width() as f32,
+                            cell_size.1 + line_spacing,
+                            background,
+                        );
+                        x += cell_size.0 * cluster.width() as f32;
+                    }
+                    x = 0.;
+                    for cluster in line.clusters() {
+                        let foreground = cluster.foreground();
+                        let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
+
+                        draw_text(&cluster.text(), x, y, foreground);
+                        x += cell_size.0 * cluster.width() as f32;
+                    }
+                    x = 0.;
+                    y += cell_size.1 + line_spacing;
+                }
+            })
+        },
+    );
+
     rsx!(
         rect {
-            reference: node_ref,
             width: "100%",
             height: "100%",
             padding: "{padding_top} {padding_right} {padding_bottom} {padding_left}",
             onwheel: onwheel,
-            for (line_index, line) in rendered_lines().iter().enumerate() {
-                Line {
-                    key: "{line_index}",
-                    line: line.clone(),
-                    line_spacing: line_spacing,
-                    cursor: (line_index == rendered_cursor().1 && rendered_scroll_top() == 0).then(|| rendered_cursor().0),
-                    cell_size: cell_size,
-                }
-            }
-        }
-    )
-}
-
-#[component]
-#[allow(non_snake_case)]
-fn Line(
-    line: LineElement,
-    line_spacing: u16,
-    cursor: Option<usize>,
-    cell_size: (f32, f32),
-) -> Element {
-    rsx!(
-        CursorArea {
-            icon: CursorIcon::Text,
             rect {
-                onmousedown: |e| e.stop_propagation(),
-                height: "{cell_size.1 + (2. * line_spacing as f32)}",
-                for segment in line.clusters() {
-                    rect {
-                        background: segment.background(),
-                        width: "{cell_size.0 * segment.width() as f32 + 0.5}",
-                        height: "{cell_size.1 + (2. * line_spacing as f32)}",
-                        layer: "2",
-                        position: "absolute",
-                        position_top: "0",
-                        position_left: "{cell_size.0 * segment.start_index() as f32}",
-                    }
-                }
-                rect {
-                    padding: "{line_spacing} 0",
-                    paragraph {
-                        max_lines: "1",
-                        layer: "1",
-                        for segment in line.clusters() {
-                            text {
-                                color: segment.foreground(),
-                                font_weight: "{segment.intensity()}",
-                                "{segment.text()}"
-                            }
-                        }
-                    }
-                    if let Some(cursor_index) = cursor {
-                        rect {
-                            width: "{cell_size.0}",
-                            height: "{cell_size.1}",
-                            color: "rgb(17, 21, 28)",
-                            background: "rgb(165, 172, 186)",
-                            layer: "-10",
-                            position: "absolute",
-                            position_top: "0",
-                            position_left: "{cell_size.0 * cursor_index as f32}",
-
-                            rect {
-                                label {
-                                    "{line.cell_content(cursor_index)}"
-                                }
-                            }
-                        }
-                    }
+                width: "100%",
+                height: "100%",
+                reference: node_ref,
+                Canvas {
+                    canvas,
+                    theme: theme_with!(CanvasTheme {
+                        background: "transparent".into(),
+                        width: "100%".into(),
+                        height: "100%".into(),
+                    })
                 }
             }
         }
