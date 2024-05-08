@@ -45,8 +45,11 @@ impl UseTerminal {
     }
 
     pub fn send_event(&self, event: UserEvent) {
-        let user_event_sender = self.pane.user_event_sender();
-        user_event_sender.send(event).unwrap();
+        self.pane
+            .terminal_bridge()
+            .user_event_sender()
+            .send(event)
+            .ok();
     }
 }
 

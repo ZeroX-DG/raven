@@ -58,7 +58,7 @@ pub fn ContentArea(
     use_hook({
         let pane = pane.clone();
         move || {
-            let terminal_event_rx = pane.terminal_events();
+            let terminal_event_rx = pane.terminal_bridge().terminal_event_receiver().clone();
             spawn(async move {
                 while let Ok(event) = terminal_event_rx.recv_async().await {
                     match event {

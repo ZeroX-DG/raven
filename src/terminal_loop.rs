@@ -18,17 +18,29 @@ use wezterm_term::{
 
 use crate::rendering::{render_terminal, LineElement};
 
-pub fn create_terminal(
-    size: TerminalSize,
-) -> anyhow::Result<(Sender<UserEvent>, Receiver<TerminalEvent>)> {
+pub fn create_terminal(size: TerminalSize) -> anyhow::Result<TerminalBridge> {
     let terminal_loop = TerminalLoop::new(size)?;
 
     let user_event_tx = terminal_loop.user_event_channel.0.clone();
     let terminal_event_rx = terminal_loop.terminal_event_channel.1.clone();
 
-    std::thread::spawn(|| terminal_loop.run());
+    tokio::spawn(async {
+        terminal_loop.run().ok();
+    });
 
-    Ok((user_event_tx, terminal_event_rx))
+    Ok(TerminalBridge(user_event_tx, terminal_event_rx))
+}
+
+pub struct TerminalBridge(Sender<UserEvent>, Receiver<TerminalEvent>);
+
+impl TerminalBridge {
+    pub fn user_event_sender(&self) -> &Sender<UserEvent> {
+        &self.0
+    }
+
+    pub fn terminal_event_receiver(&self) -> &Receiver<TerminalEvent> {
+        &self.1
+    }
 }
 
 pub enum TerminalEvent {
