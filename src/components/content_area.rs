@@ -141,10 +141,12 @@ pub fn ContentArea(
                     for cluster in line.clusters() {
                         let background = cluster.background();
                         let background = Color::from_rgb(background.0, background.1, background.2);
+                        // For some reason, there was these 1px gaps between each cluster. So I
+                        // added 1. to make up for these gaps.
                         draw_rect(
                             x,
-                            y + line_spacing,
-                            cell_size.0 * cluster.width() as f32,
+                            y + line_spacing + 1.,
+                            cell_size.0 * cluster.width() as f32 + 1.,
                             cell_size.1 + line_spacing,
                             background,
                         );
