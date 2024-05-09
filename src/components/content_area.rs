@@ -164,19 +164,18 @@ pub fn ContentArea(
                 }
 
                 // draw the cursor at the end so it sits on top everything
-                draw_rect(
-                    cursor.0 as f32 * cell_size.0,
-                    cursor_y + line_spacing * 2.,
-                    cell_size.0,
-                    cell_size.1,
-                    Color::WHITE,
-                );
-                draw_text(
-                    &lines.get(cursor.1).unwrap().cell_content(cursor.0),
-                    cursor.0 as f32 * cell_size.0,
-                    cursor_y,
-                    Color::BLACK,
-                    false,
+                let mut paint = Paint::default();
+                paint.set_anti_alias(true);
+                paint.set_color(Color::WHITE);
+                paint.set_blend_mode(skia_safe::BlendMode::Difference);
+                canvas.draw_rect(
+                    skia_safe::Rect::from_xywh(
+                        cursor.0 as f32 * cell_size.0,
+                        cursor_y + line_spacing * 2.,
+                        cell_size.0,
+                        cell_size.1,
+                    ),
+                    &paint,
                 );
             })
         },

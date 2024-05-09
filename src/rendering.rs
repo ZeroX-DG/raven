@@ -1,5 +1,5 @@
 use termwiz::cellcluster::CellCluster;
-use wezterm_term::{color::ColorPalette, CellRef, CursorPosition, Line, Terminal};
+use wezterm_term::{color::ColorPalette, CursorPosition, Line, Terminal};
 
 #[derive(Clone, Debug)]
 pub struct LineElement(Line, ColorPalette, usize);
@@ -19,16 +19,6 @@ impl LineElement {
             .into_iter()
             .map(|cluster| LineSegment(cluster, self.1.clone()))
             .collect()
-    }
-
-    pub fn cell(&self, index: usize) -> Option<CellRef> {
-        self.0.get_cell(index)
-    }
-
-    pub fn cell_content(&self, index: usize) -> String {
-        self.cell(index)
-            .map(|cell| cell.str().to_string())
-            .unwrap_or_default()
     }
 }
 
