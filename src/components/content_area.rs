@@ -87,7 +87,6 @@ pub fn ContentArea(
                 }
 
                 canvas.translate((region.min_x(), region.min_y()));
-                canvas.scale((2., 2.));
 
                 let normal_typeface =
                     font_collection.find_typefaces(&["jetbrains mono"], FontStyle::default());
