@@ -63,8 +63,8 @@ fn App() -> Element {
     let config = use_signal(|| TerminalConfig::default());
 
     let cell_size = use_memo(move || {
-        let font_size = config.read().font_size;
-        get_cell_size(font_size)
+        let config = config.read();
+        get_cell_size(config.font_size, config.line_height)
     });
 
     let onkeydown = move |e: KeyboardEvent| {
@@ -156,6 +156,7 @@ fn App() -> Element {
                             pane: pane,
                             cell_size: cell_size(),
                             font_size: config.read().font_size,
+                            line_height: config.read().line_height,
                         }
                     }
                 }

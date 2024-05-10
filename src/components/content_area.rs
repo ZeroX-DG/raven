@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use freya::prelude::*;
-use skia_safe::{Color, Font, FontStyle, Paint};
+use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
+use skia_safe::{Color, Paint};
 
 use crate::{
     hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
@@ -16,6 +17,8 @@ pub fn ContentArea(
     cell_size: (f32, f32),
     // Size of the font
     font_size: f32,
+    // Line height
+    line_height: Option<f32>,
 ) -> Element {
     let mut rendered_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
     let mut rendered_cursor = use_signal_sync::<(usize, usize)>(|| (0, 0));
@@ -26,7 +29,6 @@ pub fn ContentArea(
     let padding_right = 50.;
     let padding_bottom = 40.;
     let padding_left = 100.;
-    let line_spacing = 2.;
 
     let (node_ref, size) = use_node_signal();
 
@@ -49,7 +51,7 @@ pub fn ContentArea(
         let terminal = terminal.clone();
         move || {
             let terminal_size = terminal_size();
-            terminal.resize(terminal_size, cell_size, line_spacing);
+            terminal.resize(terminal_size, cell_size);
         }
     });
 
@@ -88,49 +90,24 @@ pub fn ContentArea(
 
                 canvas.translate((region.min_x(), region.min_y()));
 
-                let normal_typeface =
-                    font_collection.find_typefaces(&["jetbrains mono"], FontStyle::default());
+                let mut style = ParagraphStyle::default();
+                let mut text_style = TextStyle::default();
+                text_style.set_font_size(font_size);
+                text_style.set_font_families(&["jetbrains mono"]);
 
-                let bold_typeface =
-                    font_collection.find_typefaces(&["jetbrains mono"], FontStyle::bold());
+                if let Some(line_height) = line_height {
+                    text_style.set_height_override(true);
+                    text_style.set_height(line_height);
+                }
 
-                let normal_font = Font::new(
-                    normal_typeface
-                        .first()
-                        .expect("JetBrains Mono Font not found"),
-                    font_size,
-                );
+                style.set_text_style(&text_style);
+                let mut paragraph_builder = ParagraphBuilder::new(&style, font_collection.clone());
 
-                let bold_font = Font::new(
-                    bold_typeface
-                        .first()
-                        .expect("JetBrains Mono Font not found"),
-                    font_size,
-                );
+                let mut paint = Paint::default();
+                paint.set_anti_alias(true);
 
-                let draw_text = |content: &str, x: f32, y: f32, color: Color, bold: bool| {
-                    let mut paint = Paint::default();
-                    paint.set_anti_alias(true);
-                    paint.set_color(color);
-                    canvas.draw_str(
-                        content,
-                        (x, y + cell_size.1),
-                        if bold { &bold_font } else { &normal_font },
-                        &paint,
-                    )
-                };
-
-                let draw_rect = |x: f32, y: f32, width: f32, height: f32, color: Color| {
-                    let mut paint = Paint::default();
-                    paint.set_anti_alias(true);
-                    paint.set_color(color);
-                    canvas.draw_rect(skia_safe::Rect::from_xywh(x, y, width, height), &paint);
-                };
-
-                let mut x = 0.;
-                let mut y = line_spacing;
-
-                let mut cursor_y = y + line_spacing;
+                let mut y = 0.;
+                let mut cursor_y = y;
 
                 for (line_index, line) in lines.iter().enumerate() {
                     if line_index == cursor.1 {
@@ -140,27 +117,24 @@ pub fn ContentArea(
                     for cluster in line.clusters() {
                         let background = cluster.background();
                         let background = Color::from_rgb(background.0, background.1, background.2);
-                        // For some reason, there was these 1px gaps between each cluster. So I
-                        // added 1. to make up for these gaps.
-                        draw_rect(
-                            x,
-                            y + line_spacing + 1.,
-                            cell_size.0 * cluster.width() as f32 + 1.,
-                            cell_size.1 + line_spacing,
-                            background,
-                        );
-                        x += cell_size.0 * cluster.width() as f32;
-                    }
-                    x = 0.;
-                    for cluster in line.clusters() {
                         let foreground = cluster.foreground();
                         let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
 
-                        draw_text(&cluster.text(), x, y, foreground, cluster.is_bold());
-                        x += cell_size.0 * cluster.width() as f32;
+                        paint.set_color(background);
+                        text_style.set_color(foreground);
+                        text_style.set_background_paint(&paint);
+                        paragraph_builder.push_style(&text_style);
+                        paragraph_builder.add_text(cluster.text());
                     }
-                    x = 0.;
-                    y += cell_size.1 + line_spacing;
+
+                    let mut paragraph = paragraph_builder.build();
+                    paragraph.layout(skia_safe::scalar::MAX);
+
+                    paragraph.paint(canvas, (0., y));
+
+                    paragraph_builder.reset();
+
+                    y += paragraph.height();
                 }
 
                 // draw the cursor at the end so it sits on top everything
@@ -171,7 +145,7 @@ pub fn ContentArea(
                 canvas.draw_rect(
                     skia_safe::Rect::from_xywh(
                         cursor.0 as f32 * cell_size.0,
-                        cursor_y + line_spacing * 2.,
+                        cursor_y,
                         cell_size.0,
                         cell_size.1,
                     ),
