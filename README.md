@@ -19,13 +19,13 @@ This is an experimentation project to test out the rendering performance of frey
 - [x] Drag to move
 - [x] Scrolling
 - [x] Colour
+- [x] Font Ligature
+- [x] Emoji Rendering
 - [ ] Selection
 - [ ] Multi-tabs
 - [ ] Link clicking
 - [ ] Image viewing
 - [ ] HiDpi Scaling
-- [ ] Font Ligature
-- [ ] Emoji Rendering
 
 [1]: https://github.com/wez/wezterm/tree/main
 [2]: https://github.com/marc2332/freya
