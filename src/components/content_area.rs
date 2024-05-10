@@ -114,21 +114,46 @@ pub fn ContentArea(
                         cursor_y = y;
                     }
 
-                    for cluster in line.clusters() {
-                        let background = cluster.background();
-                        let background = Color::from_rgb(background.0, background.1, background.2);
+                    let clusters = &line.clusters();
+
+                    for cluster in clusters {
                         let foreground = cluster.foreground();
                         let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
 
-                        paint.set_color(background);
                         text_style.set_color(foreground);
-                        text_style.set_background_paint(&paint);
+
+                        if cluster.is_bold() {
+                            text_style.set_font_style(skia_safe::FontStyle::bold());
+                        } else {
+                            text_style.set_font_style(skia_safe::FontStyle::normal());
+                        }
+
                         paragraph_builder.push_style(&text_style);
                         paragraph_builder.add_text(cluster.text());
                     }
 
                     let mut paragraph = paragraph_builder.build();
                     paragraph.layout(skia_safe::scalar::MAX);
+
+                    let mut x = 0.;
+                    for cluster in clusters {
+                        let background = cluster.background();
+                        let background = Color::from_rgb(background.0, background.1, background.2);
+                        let cluster_width = cell_size.0 * cluster.width() as f32;
+                        paint.set_color(background);
+
+                        // add 1px to fill the gaps
+                        canvas.draw_rect(
+                            skia_safe::Rect::from_xywh(
+                                x - 1.,
+                                y,
+                                cluster_width + 1.,
+                                paragraph.height(),
+                            ),
+                            &paint,
+                        );
+                        x += cluster_width;
+                    }
 
                     paragraph.paint(canvas, (0., y));
 
