@@ -142,14 +142,8 @@ pub fn ContentArea(
                         let cluster_width = cell_size.0 * cluster.width() as f32;
                         paint.set_color(background);
 
-                        // add 1px to fill the gaps
                         canvas.draw_rect(
-                            skia_safe::Rect::from_xywh(
-                                x - 1.,
-                                y,
-                                cluster_width + 1.,
-                                paragraph.height(),
-                            ),
+                            skia_safe::Rect::from_xywh(x, y, cluster_width, paragraph.height()),
                             &paint,
                         );
                         x += cluster_width;
