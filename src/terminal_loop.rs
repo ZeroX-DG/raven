@@ -12,8 +12,8 @@ use termwiz::escape::{
     Action, CSI,
 };
 use wezterm_term::{
-    color::ColorPalette, CursorPosition, KeyCode, KeyModifiers, Terminal, TerminalConfiguration,
-    TerminalSize,
+    color::ColorPalette, CursorPosition, KeyCode, KeyModifiers, MouseEvent, Terminal,
+    TerminalConfiguration, TerminalSize,
 };
 
 use crate::rendering::{render_terminal, LineElement};
@@ -57,11 +57,14 @@ pub enum UserEvent {
     Paste(String),
     Keydown(KeyCode, KeyModifiers),
     Scroll(f64),
+    Mouse(MouseEvent),
+    RequestRedraw,
 }
 
 enum TerminalLoopData {
     UserEvent(UserEvent),
     PtyActions(Vec<Action>),
+    ManualRedrawRequest,
 }
 
 pub struct TerminalExtraState {
@@ -73,6 +76,7 @@ struct TerminalLoop {
     pty: Box<dyn MasterPty + Send>,
     user_event_channel: (Sender<UserEvent>, Receiver<UserEvent>),
     terminal_event_channel: (Sender<TerminalEvent>, Receiver<TerminalEvent>),
+    manual_redraw_channel: (Sender<()>, Receiver<()>),
     extra_state: TerminalExtraState,
 }
 
@@ -105,6 +109,7 @@ impl TerminalLoop {
             pty: pty.master,
             user_event_channel: unbounded(),
             terminal_event_channel: unbounded(),
+            manual_redraw_channel: unbounded(),
             extra_state: TerminalExtraState { scroll_top: 0 },
         })
     }
@@ -141,9 +146,42 @@ impl TerminalLoop {
                 }
 
                 self.extra_state.scroll_top = new_offset as usize;
+
+                self.terminal.mouse_event(wezterm_term::MouseEvent {
+                    kind: wezterm_term::MouseEventKind::Press,
+                    x: 0,
+                    y: 0,
+                    x_pixel_offset: 0,
+                    y_pixel_offset: 0,
+                    button: if delta_y > 0. {
+                        wezterm_term::MouseButton::WheelDown(1)
+                    } else {
+                        wezterm_term::MouseButton::WheelUp(1)
+                    },
+                    modifiers: wezterm_term::KeyModifiers::NONE,
+                })?;
+                self.handle_user_event(UserEvent::RequestRedraw)?;
+            }
+            UserEvent::Mouse(event) => {
+                self.terminal.mouse_event(event)?;
+            }
+            UserEvent::RequestRedraw => {
+                self.manual_redraw_channel.0.send(())?;
             }
         }
 
+        Ok(())
+    }
+
+    fn handle_redraw(&self) -> anyhow::Result<()> {
+        let scroll_top = self.extra_state.scroll_top;
+        let terminal_event_tx = self.terminal_event_channel.0.clone();
+        let (lines, cursor) = render_terminal(&self.terminal, scroll_top);
+        terminal_event_tx.send(TerminalEvent::Redraw {
+            lines,
+            cursor,
+            scroll_top,
+        })?;
         Ok(())
     }
 
@@ -151,6 +189,7 @@ impl TerminalLoop {
         let pty_read_thread = PtyReadThread::new(&self.pty);
         let terminal_actions_rx = pty_read_thread.actions();
         let user_event_rx = self.user_event_channel.1.clone();
+        let manual_redraw_rx = self.manual_redraw_channel.1.clone();
         let terminal_event_tx = self.terminal_event_channel.0.clone();
 
         loop {
@@ -160,6 +199,9 @@ impl TerminalLoop {
                 })
                 .recv(&user_event_rx, |maybe_event| {
                     maybe_event.map(|event| TerminalLoopData::UserEvent(event))
+                })
+                .recv(&manual_redraw_rx, |maybe_event| {
+                    maybe_event.map(|_| TerminalLoopData::ManualRedrawRequest)
                 })
                 .wait();
 
@@ -171,17 +213,13 @@ impl TerminalLoop {
             match data {
                 TerminalLoopData::PtyActions(actions) => {
                     self.terminal.perform_actions(actions);
-                    let scroll_top = self.extra_state.scroll_top;
-
-                    let (lines, cursor) = render_terminal(&self.terminal, scroll_top);
-                    terminal_event_tx.send(TerminalEvent::Redraw {
-                        lines,
-                        cursor,
-                        scroll_top,
-                    })?;
+                    self.handle_redraw()?;
                 }
                 TerminalLoopData::UserEvent(event) => {
                     self.handle_user_event(event)?;
+                }
+                TerminalLoopData::ManualRedrawRequest => {
+                    self.handle_redraw()?;
                 }
             }
         }

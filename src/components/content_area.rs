@@ -4,6 +4,7 @@ use freya::prelude::*;
 use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::{Color, Paint};
 
+use crate::hooks::use_debounce;
 use crate::{
     hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
 };
@@ -39,11 +40,29 @@ pub fn ContentArea(
         (width, height)
     });
 
-    let onwheel = {
+    let onwheel = use_debounce(std::time::Duration::from_millis(30), {
         let terminal = terminal.clone();
         move |e: WheelEvent| {
             let delta_y = e.data.get_delta_y();
             terminal.scroll(delta_y);
+        }
+    });
+
+    let onmousedown = {
+        let terminal = terminal.clone();
+        move |e: PointerEvent| {
+            e.stop_propagation();
+
+            terminal.mouse_down(e, cell_size);
+        }
+    };
+
+    let onmouseup = {
+        let terminal = terminal.clone();
+        move |e: PointerEvent| {
+            e.stop_propagation();
+
+            terminal.mouse_up(e, cell_size);
         }
     };
 
@@ -81,8 +100,12 @@ pub fn ContentArea(
     });
 
     let canvas = use_canvas(
-        (&*rendered_lines.read(), &*rendered_cursor.read()),
-        move |(lines, cursor)| {
+        (
+            &*rendered_lines.read(),
+            &*rendered_cursor.read(),
+            &*rendered_scroll_top.read(),
+        ),
+        move |(lines, cursor, scroll_top)| {
             Box::new(move |canvas, font_collection, region| {
                 if lines.len() == 0 {
                     return;
@@ -157,19 +180,21 @@ pub fn ContentArea(
                 }
 
                 // draw the cursor at the end so it sits on top everything
-                let mut paint = Paint::default();
-                paint.set_anti_alias(true);
-                paint.set_color(Color::WHITE);
-                paint.set_blend_mode(skia_safe::BlendMode::Difference);
-                canvas.draw_rect(
-                    skia_safe::Rect::from_xywh(
-                        cursor.0 as f32 * cell_size.0,
-                        cursor_y,
-                        cell_size.0,
-                        cell_size.1,
-                    ),
-                    &paint,
-                );
+                if scroll_top == 0 {
+                    let mut paint = Paint::default();
+                    paint.set_anti_alias(true);
+                    paint.set_color(Color::WHITE);
+                    paint.set_blend_mode(skia_safe::BlendMode::Difference);
+                    canvas.draw_rect(
+                        skia_safe::Rect::from_xywh(
+                            cursor.0 as f32 * cell_size.0,
+                            cursor_y,
+                            cell_size.0,
+                            cell_size.1,
+                        ),
+                        &paint,
+                    );
+                }
             })
         },
     );
@@ -183,6 +208,8 @@ pub fn ContentArea(
             rect {
                 width: "100%",
                 height: "100%",
+                onpointerdown: onmousedown,
+                onpointerup: onmouseup,
                 reference: node_ref,
                 Canvas {
                     canvas,

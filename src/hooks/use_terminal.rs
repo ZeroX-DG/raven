@@ -39,6 +39,45 @@ impl UseTerminal {
         self.send_event(UserEvent::Scroll(delta_y));
     }
 
+    pub fn mouse_down(&self, event: PointerEvent, cell_size: (f32, f32)) {
+        self.send_mouse_event(event, wezterm_term::MouseEventKind::Press, cell_size);
+    }
+
+    pub fn mouse_up(&self, event: PointerEvent, cell_size: (f32, f32)) {
+        self.send_mouse_event(event, wezterm_term::MouseEventKind::Release, cell_size);
+    }
+
+    fn send_mouse_event(
+        &self,
+        event: PointerEvent,
+        kind: wezterm_term::MouseEventKind,
+        cell_size: (f32, f32),
+    ) {
+        let (cell_width, cell_height) = cell_size;
+        let col = (event.element_coordinates.x / cell_width as f64) as usize;
+        let row = (event.element_coordinates.y / cell_height as f64) as i64;
+        let mouse_button = match event.get_pointer_type() {
+            PointerType::Mouse { trigger_button } => match trigger_button {
+                Some(MouseButton::Left) => wezterm_term::MouseButton::Left,
+                Some(MouseButton::Right) => wezterm_term::MouseButton::Right,
+                Some(MouseButton::Middle) => wezterm_term::MouseButton::Middle,
+                _ => wezterm_term::MouseButton::None,
+            },
+            PointerType::Touch { .. } => wezterm_term::MouseButton::Left,
+        };
+
+        let event = wezterm_term::MouseEvent {
+            kind,
+            button: mouse_button,
+            modifiers: wezterm_term::KeyModifiers::NONE,
+            x: col,
+            y: row,
+            x_pixel_offset: event.element_coordinates.x as isize,
+            y_pixel_offset: event.element_coordinates.y as isize,
+        };
+        self.send_event(UserEvent::Mouse(event));
+    }
+
     pub fn send_event(&self, event: UserEvent) {
         self.pane
             .terminal_bridge()
