@@ -51,7 +51,7 @@ fn main() {
 #[component]
 #[allow(non_snake_case)]
 fn App() -> Element {
-    let state = use_signal_sync(|| {
+    let state = use_signal(|| {
         let mut state = AppState::new();
         let pane = state.new_pane();
         state.set_active_pane(pane.id);
@@ -150,14 +150,12 @@ fn App() -> Element {
                 width: "calc(100% - 250)",
                 height: "100%",
 
-                WindowDragArea {
-                    if let Some(pane) = active_pane() {
-                        ContentArea {
-                            pane: pane,
-                            cell_size: cell_size(),
-                            font_size: config.read().font_size,
-                            line_height: config.read().line_height,
-                        }
+                if let Some(pane) = active_pane() {
+                    ContentArea {
+                        pane: pane,
+                        cell_size: cell_size(),
+                        font_size: config.read().font_size,
+                        line_height: config.read().line_height,
                     }
                 }
             }
