@@ -40,7 +40,7 @@ pub fn ContentArea(
         (width, height)
     });
 
-    let onwheel = use_debounce(std::time::Duration::from_millis(30), {
+    let onwheel = use_debounce(std::time::Duration::from_millis(15), {
         let terminal = terminal.clone();
         move |e: WheelEvent| {
             let delta_y = e.data.get_delta_y();
@@ -63,6 +63,15 @@ pub fn ContentArea(
             e.stop_propagation();
 
             terminal.mouse_up(e, cell_size);
+        }
+    };
+
+    let onmouseover = {
+        let terminal = terminal.clone();
+        move |e: PointerEvent| {
+            e.stop_propagation();
+
+            terminal.mouse_move(e, cell_size);
         }
     };
 
@@ -210,6 +219,7 @@ pub fn ContentArea(
                 height: "100%",
                 onpointerdown: onmousedown,
                 onpointerup: onmouseup,
+                onpointerover: onmouseover,
                 reference: node_ref,
                 Canvas {
                     canvas,

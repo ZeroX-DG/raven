@@ -47,6 +47,10 @@ impl UseTerminal {
         self.send_mouse_event(event, wezterm_term::MouseEventKind::Release, cell_size);
     }
 
+    pub fn mouse_move(&self, event: PointerEvent, cell_size: (f32, f32)) {
+        self.send_mouse_event(event, wezterm_term::MouseEventKind::Move, cell_size);
+    }
+
     fn send_mouse_event(
         &self,
         event: PointerEvent,

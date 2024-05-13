@@ -64,10 +64,11 @@ pub fn render_terminal(
 
     let screen = terminal.screen();
     let first_visible_line_index = screen.scrollback_rows() - screen.physical_rows - scroll_top;
+    let last_visible_line_index = first_visible_line_index + screen.physical_rows;
     let color_palette = terminal.get_config().color_palette();
 
     terminal.screen().for_each_phys_line(|index, line| {
-        if index < first_visible_line_index {
+        if index < first_visible_line_index || index > last_visible_line_index {
             return;
         }
         lines.push(LineElement(
