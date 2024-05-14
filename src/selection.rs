@@ -8,19 +8,22 @@ pub struct Selection {
     pub end: (usize, usize),
 }
 
-impl Selection {
-    pub fn render(&self, cell_size: (f32, f32), terminal_size: (usize, usize)) -> Vec<Rect> {
-        let mut rects = Vec::new();
+pub struct SelectionRange {
+    pub start: (usize, usize),
+    pub end: (usize, usize),
+}
 
+impl Selection {
+    pub fn range(&self) -> SelectionRange {
         let is_reverse_selection = (self.start.0 > self.end.0 && self.start.1 == self.end.1)
             || (self.start.1 > self.end.1);
 
-        let (col_start, line_start) = if is_reverse_selection {
+        let range_start = if is_reverse_selection {
             self.end
         } else {
             self.start
         };
-        let (mut col_end, line_end) = if is_reverse_selection {
+        let mut range_end = if is_reverse_selection {
             self.start
         } else {
             self.end
@@ -28,11 +31,24 @@ impl Selection {
 
         // Shift by one for the offset error in reverse range.
         if is_reverse_selection {
-            col_end += 1;
+            range_end.0 += 1;
         }
+
+        SelectionRange {
+            start: range_start,
+            end: range_end,
+        }
+    }
+
+    pub fn render(&self, cell_size: (f32, f32), terminal_size: (usize, usize)) -> Vec<Rect> {
+        let mut rects = Vec::new();
 
         let (cell_width, cell_height) = cell_size;
         let (terminal_cols, _) = terminal_size;
+
+        let range = self.range();
+        let (col_start, line_start) = range.start;
+        let (col_end, line_end) = range.end;
 
         if col_start == col_end && line_start == line_end {
             return rects;
