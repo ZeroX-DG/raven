@@ -4,6 +4,7 @@ mod hooks;
 mod icons;
 mod pane;
 mod rendering;
+mod selection;
 mod state;
 mod terminal_loop;
 mod utils;

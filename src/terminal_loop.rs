@@ -16,7 +16,10 @@ use wezterm_term::{
     TerminalConfiguration, TerminalSize,
 };
 
-use crate::rendering::{render_terminal, LineElement};
+use crate::{
+    rendering::{render_terminal, LineElement},
+    selection::Selection,
+};
 
 pub fn create_terminal(size: TerminalSize) -> anyhow::Result<TerminalBridge> {
     let terminal_loop = TerminalLoop::new(size)?;
@@ -48,6 +51,8 @@ pub enum TerminalEvent {
         lines: Vec<LineElement>,
         cursor: CursorPosition,
         scroll_top: usize,
+        selection: Option<Selection>,
+        terminal_visible_size: (usize, usize),
     },
     Exit,
 }
@@ -69,6 +74,8 @@ enum TerminalLoopData {
 
 pub struct TerminalExtraState {
     scroll_top: usize,
+    selection: Option<Selection>,
+    is_dragging: bool,
 }
 
 struct TerminalLoop {
@@ -110,7 +117,11 @@ impl TerminalLoop {
             user_event_channel: unbounded(),
             terminal_event_channel: unbounded(),
             manual_redraw_channel: unbounded(),
-            extra_state: TerminalExtraState { scroll_top: 0 },
+            extra_state: TerminalExtraState {
+                scroll_top: 0,
+                selection: None,
+                is_dragging: false,
+            },
         })
     }
 
@@ -163,7 +174,28 @@ impl TerminalLoop {
                 self.handle_user_event(UserEvent::RequestRedraw)?;
             }
             UserEvent::Mouse(event) => {
+                if event.button == wezterm_term::MouseButton::Left
+                    && event.kind == wezterm_term::MouseEventKind::Press
+                {
+                    self.extra_state.is_dragging = true;
+                    self.extra_state.selection = Some(Selection {
+                        seqno: self.terminal.current_seqno(),
+                        start: (event.x, event.y as usize),
+                        end: (event.x, event.y as usize),
+                    });
+                } else if self.extra_state.is_dragging
+                    && event.kind == wezterm_term::MouseEventKind::Move
+                    && self.extra_state.selection.is_some()
+                {
+                    let selection = self.extra_state.selection.as_mut().unwrap();
+                    selection.end = (event.x, event.y as usize);
+                } else if event.button == wezterm_term::MouseButton::Left
+                    && event.kind == wezterm_term::MouseEventKind::Release
+                {
+                    self.extra_state.is_dragging = false;
+                }
                 self.terminal.mouse_event(event)?;
+                self.handle_redraw()?;
             }
             UserEvent::RequestRedraw => {
                 self.manual_redraw_channel.0.send(())?;
@@ -173,14 +205,30 @@ impl TerminalLoop {
         Ok(())
     }
 
-    fn handle_redraw(&self) -> anyhow::Result<()> {
+    fn handle_redraw(&mut self) -> anyhow::Result<()> {
         let scroll_top = self.extra_state.scroll_top;
         let terminal_event_tx = self.terminal_event_channel.0.clone();
         let (lines, cursor) = render_terminal(&self.terminal, scroll_top);
+
+        let is_selection_seqno_mismatch = self
+            .extra_state
+            .selection
+            .as_ref()
+            .map(|selection| selection.seqno != self.terminal.current_seqno())
+            .unwrap_or(false);
+
+        if is_selection_seqno_mismatch {
+            self.extra_state.selection = None;
+        }
+
+        let screen = self.terminal.screen();
+
         terminal_event_tx.send(TerminalEvent::Redraw {
             lines,
             cursor,
             scroll_top,
+            selection: self.extra_state.selection.clone(),
+            terminal_visible_size: (screen.physical_cols, screen.physical_rows),
         })?;
         Ok(())
     }

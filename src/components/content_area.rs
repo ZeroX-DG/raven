@@ -5,6 +5,7 @@ use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::{Color, Paint};
 
 use crate::hooks::use_debounce;
+use crate::selection::Selection;
 use crate::{
     hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
 };
@@ -24,6 +25,8 @@ pub fn ContentArea(
     let mut rendered_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
     let mut rendered_cursor = use_signal_sync::<(usize, usize)>(|| (0, 0));
     let mut rendered_scroll_top = use_signal_sync::<usize>(|| 0);
+    let mut rendered_selection = use_signal_sync::<Option<Selection>>(|| None);
+    let mut rendered_terminal_size = use_signal_sync::<(usize, usize)>(|| (0, 0));
     let terminal = use_terminal(pane.clone());
 
     let padding_top = 50.;
@@ -93,10 +96,14 @@ pub fn ContentArea(
                             lines,
                             cursor,
                             scroll_top,
+                            selection,
+                            terminal_visible_size,
                         } => {
                             *rendered_lines.write() = lines;
                             *rendered_cursor.write() = (cursor.x, cursor.y as usize);
                             *rendered_scroll_top.write() = scroll_top;
+                            *rendered_selection.write() = selection;
+                            *rendered_terminal_size.write() = terminal_visible_size;
                         }
                         TerminalEvent::Exit => {
                             pane.close();
@@ -113,8 +120,10 @@ pub fn ContentArea(
             &*rendered_lines.read(),
             &*rendered_cursor.read(),
             &*rendered_scroll_top.read(),
+            &*rendered_selection.read(),
+            &*rendered_terminal_size.read(),
         ),
-        move |(lines, cursor, scroll_top)| {
+        move |(lines, cursor, scroll_top, selection, terminal_size)| {
             Box::new(move |canvas, font_collection, region| {
                 if lines.len() == 0 {
                     return;
@@ -188,10 +197,18 @@ pub fn ContentArea(
                     y += paragraph.height();
                 }
 
+                // draw selection
+                if let Some(selection) = &selection {
+                    paint.set_color(Color::WHITE);
+                    paint.set_blend_mode(skia_safe::BlendMode::Difference);
+
+                    for rect in selection.render(cell_size, terminal_size) {
+                        canvas.draw_rect(rect, &paint);
+                    }
+                }
+
                 // draw the cursor at the end so it sits on top everything
                 if scroll_top == 0 {
-                    let mut paint = Paint::default();
-                    paint.set_anti_alias(true);
                     paint.set_color(Color::WHITE);
                     paint.set_blend_mode(skia_safe::BlendMode::Difference);
                     canvas.draw_rect(
