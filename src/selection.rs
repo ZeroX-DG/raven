@@ -12,8 +12,20 @@ impl Selection {
     pub fn render(&self, cell_size: (f32, f32), terminal_size: (usize, usize)) -> Vec<Rect> {
         let mut rects = Vec::new();
 
-        let (col_start, line_start) = self.start;
-        let (col_end, line_end) = self.end;
+        let is_reverse_selection = (self.start.0 > self.end.0 && self.start.1 == self.end.1)
+            || (self.start.1 > self.end.1);
+
+        let (col_start, line_start) = if is_reverse_selection {
+            self.end
+        } else {
+            self.start
+        };
+        let (col_end, line_end) = if is_reverse_selection {
+            self.start
+        } else {
+            self.end
+        };
+
         let (cell_width, cell_height) = cell_size;
         let (terminal_cols, _) = terminal_size;
 
