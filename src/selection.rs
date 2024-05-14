@@ -20,11 +20,16 @@ impl Selection {
         } else {
             self.start
         };
-        let (col_end, line_end) = if is_reverse_selection {
+        let (mut col_end, line_end) = if is_reverse_selection {
             self.start
         } else {
             self.end
         };
+
+        // Shift by one for the offset error in reverse range.
+        if is_reverse_selection {
+            col_end += 1;
+        }
 
         let (cell_width, cell_height) = cell_size;
         let (terminal_cols, _) = terminal_size;
