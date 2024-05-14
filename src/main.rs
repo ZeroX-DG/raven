@@ -17,7 +17,6 @@ use hooks::use_terminal;
 use log::LevelFilter;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use state::AppState;
-use utils::get_cell_size;
 use wezterm_term::{KeyCode, KeyModifiers};
 
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/JetBrainsMonoNerdFont-Regular.ttf");
@@ -61,12 +60,7 @@ fn App() -> Element {
     let active_pane = use_memo(move || state.read().active_pane());
     let mut focus_manager = use_focus();
 
-    let config = use_signal(|| TerminalConfig::default());
-
-    let cell_size = use_memo(move || {
-        let config = config.read();
-        get_cell_size(config.font_size, config.line_height)
-    });
+    let mut config = use_signal(|| TerminalConfig::default());
 
     let onkeydown = move |e: KeyboardEvent| {
         focus_manager.prevent_navigation();
@@ -109,6 +103,20 @@ fn App() -> Element {
                     terminal.copy_selection();
                     return;
                 };
+
+                // Handle zoom in
+                if ch == "+" && meta_or_ctrl {
+                    let new_font_size = config.read().font_size + 1.;
+                    config.write().set_font_size(new_font_size);
+                    return;
+                }
+
+                // Handle zoom out
+                if ch == "-" && meta_or_ctrl {
+                    let new_font_size = config.read().font_size - 1.;
+                    config.write().set_font_size(new_font_size);
+                    return;
+                }
 
                 // Handle typing regular keys
                 let key_code = KeyCode::Char(ch.chars().next().unwrap());
@@ -160,9 +168,7 @@ fn App() -> Element {
                 if let Some(pane) = active_pane() {
                     ContentArea {
                         pane: pane,
-                        cell_size: cell_size(),
-                        font_size: config.read().font_size,
-                        line_height: config.read().line_height,
+                        config: config
                     }
                 }
             }

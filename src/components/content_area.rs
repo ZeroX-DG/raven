@@ -5,8 +5,10 @@ use freya::prelude::*;
 use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::{Color, Paint};
 
+use crate::config::TerminalConfig;
 use crate::hooks::use_debounce;
 use crate::selection::Selection;
+use crate::utils::get_cell_size;
 use crate::{
     hooks::use_terminal, pane::Pane, rendering::LineElement, terminal_loop::TerminalEvent,
 };
@@ -16,12 +18,8 @@ use crate::{
 pub fn ContentArea(
     // Pane to render the content of
     pane: Arc<Pane>,
-    // Size of each cell (width, height)
-    cell_size: (f32, f32),
-    // Size of the font
-    font_size: f32,
-    // Line height
-    line_height: Option<f32>,
+    // Terminal Config
+    config: Signal<TerminalConfig>,
 ) -> Element {
     let mut rendered_lines = use_signal_sync::<Vec<LineElement>>(|| vec![]);
     let mut rendered_cursor = use_signal_sync::<(usize, usize)>(|| (0, 0));
@@ -44,6 +42,14 @@ pub fn ContentArea(
         (width, height)
     });
 
+    let font_size = use_memo(move || config.read().font_size);
+    let line_height = use_memo(move || config.read().line_height);
+
+    let cell_size = use_memo(move || {
+        let config = config.read();
+        get_cell_size(config.font_size, config.line_height)
+    });
+
     let onwheel = use_debounce(std::time::Duration::from_millis(15), {
         let terminal = terminal.clone();
         move |e: WheelEvent| {
@@ -57,7 +63,7 @@ pub fn ContentArea(
         move |e: PointerEvent| {
             e.stop_propagation();
 
-            terminal.mouse_down(e, cell_size);
+            terminal.mouse_down(e, cell_size());
         }
     };
 
@@ -66,7 +72,7 @@ pub fn ContentArea(
         move |e: PointerEvent| {
             e.stop_propagation();
 
-            terminal.mouse_up(e, cell_size);
+            terminal.mouse_up(e, cell_size());
         }
     };
 
@@ -75,7 +81,7 @@ pub fn ContentArea(
         move |e: PointerEvent| {
             e.stop_propagation();
 
-            terminal.mouse_move(e, cell_size);
+            terminal.mouse_move(e, cell_size());
         }
     };
 
@@ -83,7 +89,7 @@ pub fn ContentArea(
         let terminal = terminal.clone();
         move || {
             let terminal_size = terminal_size();
-            terminal.resize(terminal_size, cell_size);
+            terminal.resize(terminal_size, cell_size());
         }
     });
 
@@ -127,8 +133,20 @@ pub fn ContentArea(
             &*rendered_scroll_top.read(),
             &*rendered_selection.read(),
             &*rendered_terminal_size.read(),
+            &*cell_size.read(),
+            &*line_height.read(),
+            &*font_size.read(),
         ),
-        move |(lines, cursor, scroll_top, selection, terminal_size)| {
+        move |(
+            lines,
+            cursor,
+            scroll_top,
+            selection,
+            terminal_size,
+            cell_size,
+            line_height,
+            font_size,
+        )| {
             Box::new(move |canvas, font_collection, region| {
                 if lines.len() == 0 {
                     return;

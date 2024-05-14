@@ -22,7 +22,7 @@ This is an experimentation project to test out the rendering performance of frey
 - [x] Font Ligature
 - [x] Emoji Rendering
 - [x] Selection
-- [ ] Zoom In & Out
+- [x] Zoom In & Out
 - [ ] Config file
 - [ ] Multi-tabs
 - [ ] Link clicking

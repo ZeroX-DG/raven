@@ -7,6 +7,12 @@ pub struct TerminalConfig {
     pub line_height: Option<f32>,
 }
 
+impl TerminalConfig {
+    pub fn set_font_size(&mut self, font_size: f32) {
+        self.font_size = font_size;
+    }
+}
+
 impl Default for TerminalConfig {
     fn default() -> Self {
         Self {
