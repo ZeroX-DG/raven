@@ -105,14 +105,14 @@ fn App() -> Element {
                 };
 
                 // Handle zoom in
-                if ch == "+" && meta_or_ctrl {
+                if (ch == "+" || ch == "=") && (meta_or_ctrl || e.modifiers.ctrl()) {
                     let new_font_size = config.read().font_size + 1.;
                     config.write().set_font_size(new_font_size);
                     return;
                 }
 
                 // Handle zoom out
-                if ch == "-" && meta_or_ctrl {
+                if (ch == "-" || ch == "_") && (meta_or_ctrl || e.modifiers.ctrl()) {
                     let new_font_size = config.read().font_size - 1.;
                     config.write().set_font_size(new_font_size);
                     return;
