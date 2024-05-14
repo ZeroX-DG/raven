@@ -21,9 +21,12 @@ This is an experimentation project to test out the rendering performance of frey
 - [x] Colour
 - [x] Font Ligature
 - [x] Emoji Rendering
-- [ ] Selection
+- [x] Selection
+- [ ] Zoom In & Out
+- [ ] Config file
 - [ ] Multi-tabs
 - [ ] Link clicking
+- [ ] ChatGPT!
 - [ ] Image viewing
 - [ ] HiDpi Scaling
 
