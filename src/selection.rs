@@ -23,6 +23,7 @@ impl Selection {
         } else {
             self.start
         };
+
         let mut range_end = if is_reverse_selection {
             self.start
         } else {
@@ -84,11 +85,8 @@ impl Selection {
         let (terminal_cols, _) = terminal_size;
 
         let range = self.range();
-        let (col_start, mut line_start) = range.start;
-        let (col_end, mut line_end) = range.end;
-
-        line_start -= first_line_index;
-        line_end -= first_line_index;
+        let (col_start, line_start) = range.start;
+        let (col_end, line_end) = range.end;
 
         if col_start == col_end && line_start == line_end {
             return rects;
@@ -96,32 +94,45 @@ impl Selection {
 
         let num_of_rows = (line_end - line_start) + 1;
 
-        rects.push(Rect::from_xywh(
-            col_start as f32 * cell_width,
-            line_start as f32 * cell_height,
-            if num_of_rows > 1 {
-                cell_width * (terminal_cols - col_start) as f32
-            } else {
-                cell_width * (col_end - col_start) as f32
-            },
-            cell_height,
-        ));
+        if line_start >= first_line_index {
+            let line = line_start - first_line_index;
+
+            rects.push(Rect::from_xywh(
+                col_start as f32 * cell_width,
+                line as f32 * cell_height,
+                if num_of_rows > 1 {
+                    cell_width * (terminal_cols - col_start) as f32
+                } else {
+                    cell_width * (col_end - col_start) as f32
+                },
+                cell_height,
+            ));
+        }
 
         if num_of_rows > 2 {
             for line_offset in 1..num_of_rows - 1 {
+                let line = line_start + line_offset;
+
+                if line < first_line_index {
+                    continue;
+                }
+
+                let line = line - first_line_index;
+
                 rects.push(Rect::from_xywh(
                     0.,
-                    (line_start + line_offset) as f32 * cell_height,
+                    line as f32 * cell_height,
                     terminal_cols as f32 * cell_width,
                     cell_height,
                 ));
             }
         }
 
-        if num_of_rows > 1 {
+        if num_of_rows > 1 && line_end >= first_line_index {
+            let line = line_end - first_line_index;
             rects.push(Rect::from_xywh(
                 0.,
-                cell_height * line_end as f32,
+                cell_height * line as f32,
                 cell_width * col_end as f32,
                 cell_height,
             ));
