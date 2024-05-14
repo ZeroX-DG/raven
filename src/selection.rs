@@ -40,15 +40,55 @@ impl Selection {
         }
     }
 
-    pub fn render(&self, cell_size: (f32, f32), terminal_size: (usize, usize)) -> Vec<Rect> {
+    pub fn get_content(&self, terminal: &wezterm_term::Terminal) -> String {
+        let screen = terminal.screen();
+        let mut content = String::new();
+        let selection_range = self.range();
+
+        let num_of_rows = (selection_range.end.1 - selection_range.start.1) + 1;
+
+        let mut x = selection_range.start.0;
+        let mut y = selection_range.start.1;
+
+        screen.for_each_phys_line(|line_index, line| {
+            if line_index < selection_range.start.1 || line_index > selection_range.end.1 {
+                return;
+            }
+
+            let is_last_line = y - selection_range.start.1 == num_of_rows - 1;
+
+            let line_end = if num_of_rows == 1 || is_last_line {
+                selection_range.end.0
+            } else {
+                line.len()
+            };
+
+            content.push_str(&line.columns_as_str(x..line_end));
+            content.push('\n');
+            x = 0;
+            y += 1;
+        });
+
+        content
+    }
+
+    pub fn render(
+        &self,
+        first_line_index: usize,
+        cell_size: (f32, f32),
+        terminal_size: (usize, usize),
+    ) -> Vec<Rect> {
         let mut rects = Vec::new();
 
         let (cell_width, cell_height) = cell_size;
         let (terminal_cols, _) = terminal_size;
 
         let range = self.range();
-        let (col_start, line_start) = range.start;
-        let (col_end, line_end) = range.end;
+        let (col_start, mut line_start) = range.start;
+        let (col_end, mut line_end) = range.end;
+
+        line_start -= first_line_index;
+        line_end -= first_line_index;
 
         if col_start == col_end && line_start == line_end {
             return rects;

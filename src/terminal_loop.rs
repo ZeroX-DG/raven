@@ -54,12 +54,14 @@ pub enum TerminalEvent {
         selection: Option<Selection>,
         terminal_visible_size: (usize, usize),
     },
+    SetClipboardContent(String),
     Exit,
 }
 
 pub enum UserEvent {
     Resize(TerminalSize),
     Paste(String),
+    CopySelection,
     Keydown(KeyCode, KeyModifiers),
     Scroll(f64),
     Mouse(MouseEvent),
@@ -141,6 +143,14 @@ impl TerminalLoop {
             UserEvent::Paste(content) => {
                 self.terminal.send_paste(&content)?;
             }
+            UserEvent::CopySelection => {
+                if let Some(selection) = &self.extra_state.selection {
+                    let selection_content = selection.get_content(&self.terminal);
+                    self.terminal_event_channel
+                        .0
+                        .send(TerminalEvent::SetClipboardContent(selection_content))?;
+                }
+            }
             UserEvent::Keydown(key, mods) => {
                 self.terminal.key_down(key, mods)?;
             }
@@ -178,24 +188,30 @@ impl TerminalLoop {
                     && event.kind == wezterm_term::MouseEventKind::Press
                 {
                     self.extra_state.is_dragging = true;
+
+                    let (selection_x, selection_y) =
+                        self.visible_xy_to_absolute_xy(event.x, event.y as usize);
+
                     self.extra_state.selection = Some(Selection {
                         seqno: self.terminal.current_seqno(),
-                        start: (event.x, event.y as usize),
-                        end: (event.x, event.y as usize),
+                        start: (selection_x, selection_y),
+                        end: (selection_x, selection_y),
                     });
                 } else if self.extra_state.is_dragging
                     && event.kind == wezterm_term::MouseEventKind::Move
                     && self.extra_state.selection.is_some()
                 {
+                    let (selection_x, selection_y) =
+                        self.visible_xy_to_absolute_xy(event.x, event.y as usize);
                     let selection = self.extra_state.selection.as_mut().unwrap();
-                    selection.end = (event.x, event.y as usize);
+                    selection.end = (selection_x, selection_y);
                 } else if event.button == wezterm_term::MouseButton::Left
                     && event.kind == wezterm_term::MouseEventKind::Release
                 {
                     self.extra_state.is_dragging = false;
                 }
                 self.terminal.mouse_event(event)?;
-                self.handle_redraw()?;
+                self.handle_user_event(UserEvent::RequestRedraw)?;
             }
             UserEvent::RequestRedraw => {
                 self.manual_redraw_channel.0.send(())?;
@@ -203,6 +219,13 @@ impl TerminalLoop {
         }
 
         Ok(())
+    }
+
+    fn visible_xy_to_absolute_xy(&self, x: usize, y: usize) -> (usize, usize) {
+        let screen = self.terminal.screen();
+        let first_visible_line_index =
+            screen.scrollback_rows() - screen.physical_rows - self.extra_state.scroll_top;
+        (x, y + first_visible_line_index)
     }
 
     fn handle_redraw(&mut self) -> anyhow::Result<()> {

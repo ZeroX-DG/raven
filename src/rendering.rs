@@ -2,23 +2,27 @@ use termwiz::cellcluster::CellCluster;
 use wezterm_term::{color::ColorPalette, CursorPosition, Line, Terminal};
 
 #[derive(Clone, Debug)]
-pub struct LineElement(Line, ColorPalette, usize);
+pub struct LineElement(usize, Line, ColorPalette, usize);
 
 #[derive(Clone, Debug)]
 pub struct LineSegment(CellCluster, ColorPalette);
 
 impl LineElement {
     pub fn clusters(&self) -> Vec<LineSegment> {
-        let mut line = self.0.clone();
+        let mut line = self.1.clone();
         let seq_no = line.current_seqno();
-        let remaining_space = usize::max(self.2, line.len()) - line.len();
+        let remaining_space = usize::max(self.3, line.len()) - line.len();
         let empty_space_line = Line::with_width(remaining_space, seq_no);
         line.append_line(empty_space_line, seq_no);
 
         line.cluster(None)
             .into_iter()
-            .map(|cluster| LineSegment(cluster, self.1.clone()))
+            .map(|cluster| LineSegment(cluster, self.2.clone()))
             .collect()
+    }
+
+    pub fn index(&self) -> usize {
+        self.0
     }
 }
 
@@ -52,7 +56,7 @@ impl LineSegment {
 
 impl PartialEq for LineElement {
     fn eq(&self, other: &Self) -> bool {
-        self.0.current_seqno() == other.0.current_seqno() && self.0.as_str() == other.0.as_str()
+        self.1.current_seqno() == other.1.current_seqno() && self.1.as_str() == other.1.as_str()
     }
 }
 
@@ -72,6 +76,7 @@ pub fn render_terminal(
             return;
         }
         lines.push(LineElement(
+            index,
             line.clone(),
             color_palette.clone(),
             screen.physical_cols,

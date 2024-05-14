@@ -104,6 +104,12 @@ fn App() -> Element {
                     return;
                 };
 
+                // Handle copying selection content from terminal
+                if ch == "c" && meta_or_ctrl {
+                    terminal.copy_selection();
+                    return;
+                };
+
                 // Handle typing regular keys
                 let key_code = KeyCode::Char(ch.chars().next().unwrap());
                 terminal.key_down(key_code, mods);

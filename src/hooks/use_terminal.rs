@@ -15,6 +15,10 @@ impl UseTerminal {
         self.send_event(UserEvent::Paste(content));
     }
 
+    pub fn copy_selection(&self) {
+        self.send_event(UserEvent::CopySelection);
+    }
+
     pub fn key_down(&self, key: KeyCode, mods: KeyModifiers) {
         self.send_event(UserEvent::Keydown(key, mods));
     }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arboard::Clipboard;
 use freya::prelude::*;
 use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::{Color, Paint};
@@ -109,6 +110,10 @@ pub fn ContentArea(
                             pane.close();
                             break;
                         }
+                        TerminalEvent::SetClipboardContent(content) => {
+                            let mut clipboard = Clipboard::new().unwrap();
+                            clipboard.set_text(content).ok();
+                        }
                     }
                 }
             });
@@ -202,7 +207,10 @@ pub fn ContentArea(
                     paint.set_color(Color::WHITE);
                     paint.set_blend_mode(skia_safe::BlendMode::Difference);
 
-                    for rect in selection.render(cell_size, terminal_size) {
+                    let first_line = lines.get(0).unwrap();
+                    let first_line_index = first_line.index();
+
+                    for rect in selection.render(first_line_index, cell_size, terminal_size) {
                         canvas.draw_rect(rect, &paint);
                     }
                 }
