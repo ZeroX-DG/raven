@@ -23,7 +23,7 @@ This is an experimentation project to test out the rendering performance of frey
 - [x] Emoji Rendering
 - [x] Selection
 - [x] Zoom In & Out
-- [ ] Config file
+- [x] Config file (`$config_dir/raven/config.toml`)
 - [ ] Multi-tabs
 - [ ] Link clicking
 - [ ] ChatGPT!
