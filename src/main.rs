@@ -60,7 +60,11 @@ fn App() -> Element {
     let active_pane = use_memo(move || state.read().active_pane());
     let mut focus_manager = use_focus();
 
-    let mut config = use_signal(|| TerminalConfig::default());
+    let mut config = use_signal(|| {
+        let mut config = TerminalConfig::default();
+        config.load_from_file();
+        config
+    });
 
     let onkeydown = move |e: KeyboardEvent| {
         focus_manager.prevent_navigation();
