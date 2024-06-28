@@ -42,6 +42,7 @@ fn main() {
             .with_width(900.)
             .with_height(600.)
             .with_transparency(true)
+            .without_default_fonts()
             .with_font("jetbrains mono", JETBRAINS_MONO)
             .with_default_font("jetbrains mono"),
     );

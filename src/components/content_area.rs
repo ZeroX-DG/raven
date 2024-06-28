@@ -141,6 +141,7 @@ pub fn ContentArea(
             }
 
             canvas.translate((region.min_x(), region.min_y()));
+            canvas.scale((scale_factor, scale_factor));
 
             let mut style = ParagraphStyle::default();
             let mut text_style = TextStyle::default();
