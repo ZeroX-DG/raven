@@ -126,130 +126,117 @@ pub fn ContentArea(
         }
     });
 
-    let canvas = use_canvas(
-        (
-            &*rendered_lines.read(),
-            &*rendered_cursor.read(),
-            &*rendered_scroll_top.read(),
-            &*rendered_selection.read(),
-            &*rendered_terminal_size.read(),
-            &*cell_size.read(),
-            &*line_height.read(),
-            &*font_size.read(),
-        ),
-        move |(
-            lines,
-            cursor,
-            scroll_top,
-            selection,
-            terminal_size,
-            cell_size,
-            line_height,
-            font_size,
-        )| {
-            Box::new(move |canvas, font_collection, region| {
-                if lines.len() == 0 {
-                    return;
+    let canvas = use_canvas(move || {
+        let cursor = rendered_cursor();
+        let font_size = font_size();
+        let line_height = line_height();
+        let lines = rendered_lines();
+        let cell_size = cell_size();
+        let selection = rendered_selection();
+        let terminal_size = rendered_terminal_size();
+        let scroll_top = rendered_scroll_top();
+        Box::new(move |canvas, font_collection, region, scale_factor| {
+            if lines.len() == 0 {
+                return;
+            }
+
+            canvas.translate((region.min_x(), region.min_y()));
+
+            let mut style = ParagraphStyle::default();
+            let mut text_style = TextStyle::default();
+            text_style.set_font_size(font_size);
+            text_style.set_font_families(&["jetbrains mono"]);
+
+            if let Some(line_height) = line_height {
+                text_style.set_height_override(true);
+                text_style.set_height(line_height);
+            }
+
+            style.set_text_style(&text_style);
+            let mut paragraph_builder = ParagraphBuilder::new(&style, font_collection.clone());
+
+            let mut paint = Paint::default();
+            paint.set_anti_alias(true);
+
+            let mut y = 0.;
+            let mut cursor_y = y;
+
+            for (line_index, line) in lines.iter().enumerate() {
+                if line_index == cursor.1 {
+                    cursor_y = y;
                 }
 
-                canvas.translate((region.min_x(), region.min_y()));
+                let clusters = &line.clusters();
 
-                let mut style = ParagraphStyle::default();
-                let mut text_style = TextStyle::default();
-                text_style.set_font_size(font_size);
-                text_style.set_font_families(&["jetbrains mono"]);
+                for cluster in clusters {
+                    let foreground = cluster.foreground();
+                    let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
 
-                if let Some(line_height) = line_height {
-                    text_style.set_height_override(true);
-                    text_style.set_height(line_height);
+                    text_style.set_color(foreground);
+
+                    if cluster.is_bold() {
+                        text_style.set_font_style(skia_safe::FontStyle::bold());
+                    } else {
+                        text_style.set_font_style(skia_safe::FontStyle::normal());
+                    }
+
+                    paragraph_builder.push_style(&text_style);
+                    paragraph_builder.add_text(cluster.text());
                 }
 
-                style.set_text_style(&text_style);
-                let mut paragraph_builder = ParagraphBuilder::new(&style, font_collection.clone());
+                let mut paragraph = paragraph_builder.build();
+                paragraph.layout(skia_safe::scalar::MAX);
 
-                let mut paint = Paint::default();
-                paint.set_anti_alias(true);
+                let mut x = 0.;
+                for cluster in clusters {
+                    let background = cluster.background();
+                    let background = Color::from_rgb(background.0, background.1, background.2);
+                    let cluster_width = cell_size.0 * cluster.width() as f32;
+                    paint.set_color(background);
 
-                let mut y = 0.;
-                let mut cursor_y = y;
-
-                for (line_index, line) in lines.iter().enumerate() {
-                    if line_index == cursor.1 {
-                        cursor_y = y;
-                    }
-
-                    let clusters = &line.clusters();
-
-                    for cluster in clusters {
-                        let foreground = cluster.foreground();
-                        let foreground = Color::from_rgb(foreground.0, foreground.1, foreground.2);
-
-                        text_style.set_color(foreground);
-
-                        if cluster.is_bold() {
-                            text_style.set_font_style(skia_safe::FontStyle::bold());
-                        } else {
-                            text_style.set_font_style(skia_safe::FontStyle::normal());
-                        }
-
-                        paragraph_builder.push_style(&text_style);
-                        paragraph_builder.add_text(cluster.text());
-                    }
-
-                    let mut paragraph = paragraph_builder.build();
-                    paragraph.layout(skia_safe::scalar::MAX);
-
-                    let mut x = 0.;
-                    for cluster in clusters {
-                        let background = cluster.background();
-                        let background = Color::from_rgb(background.0, background.1, background.2);
-                        let cluster_width = cell_size.0 * cluster.width() as f32;
-                        paint.set_color(background);
-
-                        canvas.draw_rect(
-                            skia_safe::Rect::from_xywh(x, y, cluster_width, paragraph.height()),
-                            &paint,
-                        );
-                        x += cluster_width;
-                    }
-
-                    paragraph.paint(canvas, (0., y));
-
-                    paragraph_builder.reset();
-
-                    y += paragraph.height();
-                }
-
-                // draw selection
-                if let Some(selection) = &selection {
-                    paint.set_color(Color::WHITE);
-                    paint.set_blend_mode(skia_safe::BlendMode::Difference);
-
-                    let first_line = lines.get(0).unwrap();
-                    let first_line_index = first_line.index();
-
-                    for rect in selection.render(first_line_index, cell_size, terminal_size) {
-                        canvas.draw_rect(rect, &paint);
-                    }
-                }
-
-                // draw the cursor at the end so it sits on top everything
-                if scroll_top == 0 {
-                    paint.set_color(Color::WHITE);
-                    paint.set_blend_mode(skia_safe::BlendMode::Difference);
                     canvas.draw_rect(
-                        skia_safe::Rect::from_xywh(
-                            cursor.0 as f32 * cell_size.0,
-                            cursor_y,
-                            cell_size.0,
-                            cell_size.1,
-                        ),
+                        skia_safe::Rect::from_xywh(x, y, cluster_width, paragraph.height()),
                         &paint,
                     );
+                    x += cluster_width;
                 }
-            })
-        },
-    );
+
+                paragraph.paint(canvas, (0., y));
+
+                paragraph_builder.reset();
+
+                y += paragraph.height();
+            }
+
+            // draw selection
+            if let Some(selection) = &selection {
+                paint.set_color(Color::WHITE);
+                paint.set_blend_mode(skia_safe::BlendMode::Difference);
+
+                let first_line = lines.get(0).unwrap();
+                let first_line_index = first_line.index();
+
+                for rect in selection.render(first_line_index, cell_size, terminal_size) {
+                    canvas.draw_rect(rect, &paint);
+                }
+            }
+
+            // draw the cursor at the end so it sits on top everything
+            if scroll_top == 0 {
+                paint.set_color(Color::WHITE);
+                paint.set_blend_mode(skia_safe::BlendMode::Difference);
+                canvas.draw_rect(
+                    skia_safe::Rect::from_xywh(
+                        cursor.0 as f32 * cell_size.0,
+                        cursor_y,
+                        cell_size.0,
+                        cell_size.1,
+                    ),
+                    &paint,
+                );
+            }
+        })
+    });
 
     rsx!(
         rect {

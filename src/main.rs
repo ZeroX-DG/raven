@@ -37,14 +37,13 @@ fn main() {
 
     launch_cfg(
         App,
-        LaunchConfig::<()>::builder()
+        LaunchConfig::<()>::new()
             .with_decorations(false)
             .with_width(900.)
             .with_height(600.)
             .with_transparency(true)
             .with_font("jetbrains mono", JETBRAINS_MONO)
-            .with_default_font("jetbrains mono")
-            .build(),
+            .with_default_font("jetbrains mono"),
     );
 }
 

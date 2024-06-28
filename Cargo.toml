@@ -10,13 +10,13 @@ dioxus = { version = "0.4", features = ["macro", "hooks"], default-features = fa
 anyhow = "*"
 log = "*"
 simplelog = { version = "^0.11.0", features = ["paris"]}
-freya = { git = "https://github.com/marc2332/freya.git", rev = "7b68806" }
+freya = { git = "https://github.com/marc2332/freya.git", rev = "03cb4dc" }
 portable-pty = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
 termwiz = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
 wezterm-term = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
 filedescriptor = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
 config = { git = "https://github.com/wez/wezterm.git", rev = "cce0706" }
-skia-safe = { version = "0.72.0", features = ["textlayout"] }
+skia-safe = { version = "0.75.0", features = ["textlayout"] }
 arboard = "3.4.0"
 flume = { version = "0.11", features = ["async", "select"] }
 tokio = "1"
