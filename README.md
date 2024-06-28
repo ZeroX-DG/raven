@@ -24,11 +24,11 @@ This is an experimentation project to test out the rendering performance of frey
 - [x] Selection
 - [x] Zoom In & Out
 - [x] Config file (`$config_dir/raven/config.toml`)
+- [x] HiDpi Scaling
 - [ ] Multi-tabs
 - [ ] Link clicking
 - [ ] ChatGPT!
 - [ ] Image viewing
-- [ ] HiDpi Scaling
 
 [1]: https://github.com/wez/wezterm/tree/main
 [2]: https://github.com/marc2332/freya
