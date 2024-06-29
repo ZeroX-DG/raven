@@ -67,6 +67,15 @@ pub fn ContentArea(
         }
     };
 
+    let onmouseleave = {
+        let terminal = terminal.clone();
+        move |e: PointerEvent| {
+            e.stop_propagation();
+
+            terminal.mouse_leave(e, cell_size());
+        }
+    };
+
     let onmouseup = {
         let terminal = terminal.clone();
         move |e: PointerEvent| {
@@ -251,6 +260,7 @@ pub fn ContentArea(
                 onpointerdown: onmousedown,
                 onpointerup: onmouseup,
                 onpointerover: onmouseover,
+                onpointerleave: onmouseleave,
                 reference: node_ref,
                 Canvas {
                     canvas,

@@ -205,7 +205,8 @@ impl TerminalLoop {
                         self.visible_xy_to_absolute_xy(event.x, event.y as usize);
                     let selection = self.extra_state.selection.as_mut().unwrap();
                     selection.end = (selection_x, selection_y);
-                } else if event.button == wezterm_term::MouseButton::Left
+                } else if (event.button == wezterm_term::MouseButton::Left
+                    || event.button == wezterm_term::MouseButton::None)
                     && event.kind == wezterm_term::MouseEventKind::Release
                 {
                     self.extra_state.is_dragging = false;
